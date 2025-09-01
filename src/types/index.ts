@@ -22,6 +22,10 @@ export interface GitHubPR {
   updatedAt: string
   linkedTaskKey?: string // JIRA task key this PR is linked to
   repository?: string // Repository name (e.g., "owner/repo")
+  isDraft: boolean
+  reviewStatus: 'pending' | 'approved' | 'changes_requested' | 'no_reviews'
+  requestedReviewers: string[]
+  approvedReviewers: string[]
 }
 
 export interface TaskWithPRs extends JiraTask {

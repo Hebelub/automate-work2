@@ -1,6 +1,6 @@
 import { TaskWithPRs, JiraTask, GitHubPR } from "@/types"
 import { fetchJiraTasks, fetchSprintTasks } from "./jiraService"
-import { fetchPullRequests } from "./githubService"
+import { fetchPullRequests, clearActiveReposCache } from "./githubService"
 
 // Cache for PRs to avoid refetching
 let cachedPRs: GitHubPR[] = []
@@ -85,5 +85,6 @@ export async function getTasksByStatus(status: JiraTask['status']): Promise<Task
 export function clearPRCache(): void {
   cachedPRs = []
   cachedPRsTimestamp = 0
-  console.log('PR cache cleared')
+  clearActiveReposCache() // Also clear the active repos cache
+  console.log('PR cache and active repos cache cleared')
 }

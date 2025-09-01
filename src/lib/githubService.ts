@@ -58,6 +58,11 @@ export async function fetchUserRepositories(): Promise<GitHubRepo[]> {
   }
 }
 
+// Cache for repositories that have linked PRs
+let cachedActiveRepos: string[] = []
+let cachedActiveReposTimestamp = 0
+const ACTIVE_REPOS_CACHE_DURATION = 30 * 60 * 1000 // 30 minutes
+
 export async function fetchPullRequests(repoFullName?: string): Promise<GitHubPR[]> {
   if (!GITHUB_TOKEN) {
     console.warn('GitHub credentials not configured, returning empty array')
@@ -68,104 +73,33 @@ export async function fetchPullRequests(repoFullName?: string): Promise<GitHubPR
     if (repoFullName) {
       // Fetch from specific repository
       console.log(`Fetching PRs from GitHub repo: ${repoFullName}`)
-      
-      const response = await fetch(
-        `https://api.github.com/repos/${repoFullName}/pulls?state=all&per_page=100&sort=updated&direction=desc`,
-        {
-          headers: {
-            'Authorization': `token ${GITHUB_TOKEN}`,
-            'Accept': 'application/vnd.github.v3+json',
-          },
-        }
-      )
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error(`GitHub API error: ${response.status} ${response.statusText}`, errorText)
-        throw new Error(`GitHub API error: ${response.status} ${response.statusText}`)
-      }
-
-      const data = await response.json()
-      console.log(`Fetched ${data.length} PRs from GitHub repo: ${repoFullName}`)
-      
-      const prs = data.map((pr: any) => {
-        const linkedTaskKey = extractTaskKeyFromBranch(pr.head.ref)
-        console.log(`PR #${pr.number}: branch "${pr.head.ref}" -> task "${linkedTaskKey}"`)
-        
-        return {
-          id: pr.id.toString(),
-          title: pr.title,
-          number: pr.number,
-          status: pr.merged_at ? 'merged' : pr.state,
-          branch: pr.head.ref,
-          url: pr.html_url,
-          author: pr.user.login,
-          createdAt: pr.created_at,
-          updatedAt: pr.updated_at,
-          linkedTaskKey,
-          repository: repoFullName,
-        }
-      })
-      
-      // Log summary of linked PRs
-      const linkedPRs = prs.filter((pr: GitHubPR) => pr.linkedTaskKey)
-      console.log(`Found ${linkedPRs.length} PRs linked to JIRA tasks in ${repoFullName}`)
-      
-      return prs
+      return await fetchPRsFromRepo(repoFullName)
     } else {
-      // Fetch from all repositories - optimized to avoid recursive calls
-      console.log('Fetching PRs from all repositories...')
-      const repos = await fetchUserRepositories()
-      const allPRs: GitHubPR[] = []
+      // Smart fetching: only fetch from repositories that have linked PRs
+      console.log('Smart fetching PRs from active repositories...')
       
-      // Fetch PRs from all repositories in parallel
-      const prPromises = repos.map(async (repo) => {
-        try {
-          const response = await fetch(
-            `https://api.github.com/repos/${repo.full_name}/pulls?state=all&per_page=100&sort=updated&direction=desc`,
-            {
-              headers: {
-                'Authorization': `token ${GITHUB_TOKEN}`,
-                'Accept': 'application/vnd.github.v3+json',
-              },
-            }
-          )
-
-          if (!response.ok) {
-            console.error(`Failed to fetch PRs from ${repo.full_name}: ${response.status}`)
-            return []
-          }
-
-          const data = await response.json()
-          console.log(`Fetched ${data.length} PRs from ${repo.full_name}`)
-          
-          return data.map((pr: any) => {
-            const linkedTaskKey = extractTaskKeyFromBranch(pr.head.ref)
-            return {
-              id: pr.id.toString(),
-              title: pr.title,
-              number: pr.number,
-              status: pr.merged_at ? 'merged' : pr.state,
-              branch: pr.head.ref,
-              url: pr.html_url,
-              author: pr.user.login,
-              createdAt: pr.created_at,
-              updatedAt: pr.updated_at,
-              linkedTaskKey,
-              repository: repo.full_name,
-            }
-          })
-        } catch (error: any) {
-          console.error(`Error fetching PRs from ${repo.full_name}:`, error)
-          return []
-        }
-      })
+      // Check if we need to refresh the active repos cache
+      const now = Date.now()
+      if (!cachedActiveRepos.length || (now - cachedActiveReposTimestamp > ACTIVE_REPOS_CACHE_DURATION)) {
+        console.log('Refreshing active repositories cache...')
+        await refreshActiveReposCache()
+      }
       
-      // Wait for all PR fetches to complete
+      if (cachedActiveRepos.length === 0) {
+        console.log('No active repositories found, returning empty array')
+        return []
+      }
+      
+      console.log(`Fetching PRs from ${cachedActiveRepos.length} active repositories:`, cachedActiveRepos)
+      
+      // Fetch PRs from active repositories in parallel
+      const prPromises = cachedActiveRepos.map(repo => fetchPRsFromRepo(repo))
       const results = await Promise.all(prPromises)
+      
+      const allPRs: GitHubPR[] = []
       results.forEach(prs => allPRs.push(...prs))
       
-      console.log(`Total PRs fetched from all repositories: ${allPRs.length}`)
+      console.log(`Total PRs fetched from active repositories: ${allPRs.length}`)
       const linkedPRs = allPRs.filter(pr => pr.linkedTaskKey)
       console.log(`Total PRs linked to JIRA tasks: ${linkedPRs.length}`)
       
@@ -175,6 +109,189 @@ export async function fetchPullRequests(repoFullName?: string): Promise<GitHubPR
     console.error('Error fetching GitHub PRs:', error)
     return []
   }
+}
+
+async function fetchPRsFromRepo(repoFullName: string): Promise<GitHubPR[]> {
+  try {
+    const response = await fetch(
+      `https://api.github.com/repos/${repoFullName}/pulls?state=all&per_page=100&sort=updated&direction=desc`,
+      {
+        headers: {
+          'Authorization': `token ${GITHUB_TOKEN}`,
+          'Accept': 'application/vnd.github.v3+json',
+        },
+      }
+    )
+
+    if (!response.ok) {
+      console.error(`Failed to fetch PRs from ${repoFullName}: ${response.status}`)
+      return []
+    }
+
+    const data = await response.json()
+    console.log(`Fetched ${data.length} PRs from ${repoFullName}`)
+    
+    const prs = await Promise.all(data.map(async (pr: any) => {
+      const linkedTaskKey = extractTaskKeyFromBranch(pr.head.ref)
+      
+      // Fetch review information for this PR
+      let reviewStatus: 'pending' | 'approved' | 'changes_requested' | 'no_reviews' = 'no_reviews'
+      let requestedReviewers: string[] = []
+      let approvedReviewers: string[] = []
+      
+      try {
+        const reviewsResponse = await fetch(
+          `https://api.github.com/repos/${repoFullName}/pulls/${pr.number}/reviews`,
+          {
+            headers: {
+              'Authorization': `token ${GITHUB_TOKEN}`,
+              'Accept': 'application/vnd.github.v3+json',
+            },
+          }
+        )
+        
+        if (reviewsResponse.ok) {
+          const reviews = await reviewsResponse.json()
+          
+          // Get requested reviewers
+          if (pr.requested_reviewers) {
+            requestedReviewers = pr.requested_reviewers.map((reviewer: any) => reviewer.login)
+          }
+          
+          // Process review status
+          if (reviews.length > 0) {
+            const latestReviews = new Map()
+            reviews.forEach((review: any) => {
+              latestReviews.set(review.user.login, review.state)
+            })
+            
+            const hasApprovals = Array.from(latestReviews.values()).some((state: string) => state === 'approved')
+            const hasChangesRequested = Array.from(latestReviews.values()).some((state: string) => state === 'changes_requested')
+            
+            if (hasChangesRequested) {
+              reviewStatus = 'changes_requested'
+            } else if (hasApprovals) {
+              reviewStatus = 'approved'
+            } else {
+              reviewStatus = 'pending'
+            }
+            
+            // Get approved reviewers
+            approvedReviewers = Array.from(latestReviews.entries())
+              .filter(([_, state]) => state === 'approved')
+              .map(([reviewer, _]) => reviewer)
+          } else if (requestedReviewers.length > 0) {
+            reviewStatus = 'pending'
+          }
+        }
+      } catch (error) {
+        console.error(`Error fetching reviews for PR #${pr.number}:`, error)
+      }
+      
+      return {
+        id: pr.id.toString(),
+        title: pr.title,
+        number: pr.number,
+        status: pr.merged_at ? 'merged' : pr.state,
+        branch: pr.head.ref,
+        url: pr.html_url,
+        author: pr.user.login,
+        createdAt: pr.created_at,
+        updatedAt: pr.updated_at,
+        linkedTaskKey,
+        repository: repoFullName,
+        isDraft: pr.draft || false,
+        reviewStatus,
+        requestedReviewers,
+        approvedReviewers,
+      }
+    }))
+    
+    // Log summary of linked PRs
+    const linkedPRs = prs.filter((pr: GitHubPR) => pr.linkedTaskKey)
+    if (linkedPRs.length > 0) {
+      console.log(`Found ${linkedPRs.length} PRs linked to JIRA tasks in ${repoFullName}`)
+    }
+    
+    return prs
+  } catch (error) {
+    console.error(`Error fetching PRs from ${repoFullName}:`, error)
+    return []
+  }
+}
+
+async function refreshActiveReposCache(): Promise<void> {
+  try {
+    console.log('Scanning repositories to find those with linked PRs...')
+    const repos = await fetchUserRepositories()
+    const activeRepos: string[] = []
+    
+    // Sample a subset of repositories to find active ones
+    // Start with the most recently updated repositories
+    const recentRepos = repos.slice(0, 50) // Check top 50 most recent repos
+    
+    for (const repo of recentRepos) {
+      try {
+        const response = await fetch(
+          `https://api.github.com/repos/${repo.full_name}/pulls?state=all&per_page=10&sort=updated&direction=desc`,
+          {
+            headers: {
+              'Authorization': `token ${GITHUB_TOKEN}`,
+              'Accept': 'application/vnd.github.v3+json',
+            },
+          }
+        )
+        
+        if (response.ok) {
+          const prs = await response.json()
+          
+          // Check if any PR has a linked task key
+          const hasLinkedPRs = prs.some((pr: any) => {
+            const linkedTaskKey = extractTaskKeyFromBranch(pr.head.ref)
+            return linkedTaskKey !== undefined
+          })
+          
+          if (hasLinkedPRs) {
+            activeRepos.push(repo.full_name)
+            console.log(`Found active repository: ${repo.full_name}`)
+          }
+        }
+      } catch (error) {
+        console.error(`Error checking repository ${repo.full_name}:`, error)
+      }
+    }
+    
+    // Also include repositories from the previous cache if they exist
+    if (cachedActiveRepos.length > 0) {
+      cachedActiveRepos.forEach(repo => {
+        if (!activeRepos.includes(repo)) {
+          activeRepos.push(repo)
+        }
+      })
+    }
+    
+    cachedActiveRepos = activeRepos
+    cachedActiveReposTimestamp = Date.now()
+    
+    console.log(`Active repositories cache updated: ${activeRepos.length} repositories`)
+  } catch (error) {
+    console.error('Error refreshing active repos cache:', error)
+  }
+}
+
+// Function to manually add repositories to the active list
+export function addRepositoryToActiveList(repoFullName: string): void {
+  if (!cachedActiveRepos.includes(repoFullName)) {
+    cachedActiveRepos.push(repoFullName)
+    console.log(`Added ${repoFullName} to active repositories list`)
+  }
+}
+
+// Function to clear the active repos cache (useful for testing)
+export function clearActiveReposCache(): void {
+  cachedActiveRepos = []
+  cachedActiveReposTimestamp = 0
+  console.log('Active repositories cache cleared')
 }
 
 function extractTaskKeyFromBranch(branchName: string): string | undefined {
