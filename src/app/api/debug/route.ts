@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
+import { fetchUserRepositories } from '@/lib/githubService'
 
 const JIRA_DOMAIN = process.env.JIRA_DOMAIN
 const JIRA_EMAIL = process.env.JIRA_EMAIL
 const JIRA_API_TOKEN = process.env.JIRA_API_TOKEN
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN
 
 export async function GET() {
   if (!JIRA_DOMAIN || !JIRA_EMAIL || !JIRA_API_TOKEN) {
@@ -32,11 +34,19 @@ export async function GET() {
     // Return the first issue with its fields for debugging
     const debugIssue = data.issues[0] || null
     
+    // Fetch repositories for GitHub config
+    const repositories = await fetchUserRepositories()
+    
     return NextResponse.json({
       totalIssues: data.total,
       debugIssue,
       allFields: debugIssue ? Object.keys(debugIssue.fields) : [],
-      sprintField: debugIssue?.fields?.sprint || null,
+      sprintField: debugIssue?.fields?.customfield_10020 || null,
+      githubConfig: {
+        hasToken: !!GITHUB_TOKEN,
+        repositoriesCount: repositories.length,
+        repositories: repositories.slice(0, 5) // Show first 5 repos
+      }
     })
   } catch (error) {
     console.error('Debug API Error:', error)

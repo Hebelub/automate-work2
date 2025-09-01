@@ -21,6 +21,7 @@ export interface GitHubPR {
   createdAt: string
   updatedAt: string
   linkedTaskKey?: string // JIRA task key this PR is linked to
+  repository?: string // Repository name (e.g., "owner/repo")
 }
 
 export interface TaskWithPRs extends JiraTask {
