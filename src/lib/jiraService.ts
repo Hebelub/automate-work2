@@ -25,7 +25,7 @@ export async function fetchJiraTasks(): Promise<JiraTask[]> {
 
     while (hasMore) {
       const response = await fetch(
-        `https://${JIRA_DOMAIN}/rest/api/3/search?jql=assignee=currentUser() AND status != Done ORDER BY priority DESC&expand=sprint&startAt=${startAt}&maxResults=${maxResults}`,
+        `https://${JIRA_DOMAIN}/rest/api/3/search?jql=assignee=currentUser() ORDER BY priority DESC&expand=sprint&startAt=${startAt}&maxResults=${maxResults}`,
         {
           headers: {
             'Authorization': `Basic ${auth}`,

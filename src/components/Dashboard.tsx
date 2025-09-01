@@ -4,45 +4,31 @@ import { useState, useEffect } from "react"
 import { JiraTaskCard } from "@/components/JiraTaskCard"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { TaskWithPRs } from "@/types"
-import { Clock, Users, Loader2, Filter, GitBranch, RefreshCw } from "lucide-react"
 
-type SprintFilter = 'all' | 'sprint' | 'backlog'
-type StatusFilter = 'all' | 'active' | 'completed'
+import { TaskWithPRs } from "@/types"
+import { Users, Loader2, Filter, RefreshCw } from "lucide-react"
 
 export function Dashboard() {
   const [tasks, setTasks] = useState<TaskWithPRs[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [sprintFilter, setSprintFilter] = useState<SprintFilter>('all')
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
-  const [repositories, setRepositories] = useState<Array<{id: number, name: string, full_name: string}>>([])
-  const [selectedRepo, setSelectedRepo] = useState<string>('all')
+  const [statusFilters, setStatusFilters] = useState<Record<string, boolean>>({
+    'Open': true,
+    'In Progress': true,
+    'On Hold': true,
+    'QA': true,
+    'Ready for PROD': true,
+    'Done': true,
+    'Rejected': true,
+  })
   const [refreshing, setRefreshing] = useState(false)
-
-  useEffect(() => {
-    async function loadRepositories() {
-      try {
-        const response = await fetch('/api/repositories')
-        if (response.ok) {
-          const data = await response.json()
-          setRepositories(data.repositories || [])
-        }
-      } catch (error) {
-        console.error('Failed to load repositories:', error)
-      }
-    }
-    loadRepositories()
-  }, [])
 
   useEffect(() => {
     async function loadData() {
       try {
         setLoading(true)
         setError(null)
-        const url = selectedRepo && selectedRepo !== 'all' ? `/api/dashboard?repo=${encodeURIComponent(selectedRepo)}` : '/api/dashboard'
-        const response = await fetch(url)
+        const response = await fetch('/api/dashboard')
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`)
@@ -54,7 +40,13 @@ export function Dashboard() {
           throw new Error(data.error)
         }
         
-        setTasks(data.tasks || [])
+        const fetchedTasks = data.tasks || []
+        setTasks(fetchedTasks)
+        
+        // Debug: Log all unique status names to see what's actually coming from JIRA
+        const actualStatuses = [...new Set(fetchedTasks.map((task: TaskWithPRs) => task.status))] as string[]
+        console.log('Actual JIRA statuses found:', actualStatuses)
+        console.log('Tasks with their statuses:', fetchedTasks.map((task: TaskWithPRs) => ({ key: task.key, status: task.status })))
       } catch (err) {
         setError('Failed to load tasks')
         console.error('Error loading dashboard data:', err)
@@ -64,17 +56,14 @@ export function Dashboard() {
     }
 
     loadData()
-  }, [selectedRepo])
+  }, [])
 
   const handleRefresh = async () => {
     try {
       setRefreshing(true)
       setError(null)
-             // Clear cache by adding a timestamp parameter
-       const url = selectedRepo && selectedRepo !== 'all'
-         ? `/api/dashboard?repo=${encodeURIComponent(selectedRepo)}&refresh=${Date.now()}` 
-         : `/api/dashboard?refresh=${Date.now()}`
-      const response = await fetch(url)
+      // Clear cache by adding a timestamp parameter
+      const response = await fetch(`/api/dashboard?refresh=${Date.now()}`)
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
@@ -86,7 +75,7 @@ export function Dashboard() {
         throw new Error(data.error)
       }
       
-      setTasks(data.tasks || [])
+              setTasks(data.tasks || [])
     } catch (err) {
       setError('Failed to refresh data')
       console.error('Error refreshing dashboard data:', err)
@@ -97,21 +86,27 @@ export function Dashboard() {
 
   // Filter tasks based on current filters
   const filteredTasks = tasks.filter(task => {
-    // Sprint filter
-    if (sprintFilter === 'sprint' && !task.isInSprint) return false
-    if (sprintFilter === 'backlog' && task.isInSprint) return false
-    
-    // Status filter
-    if (statusFilter === 'active' && (task.status === 'Done' || task.status === 'Rejected')) return false
-    if (statusFilter === 'completed' && (task.status !== 'Done' && task.status !== 'Rejected')) return false
+    // Status filter - only show tasks whose status is enabled
+    if (!statusFilters[task.status]) return false
     
     return true
   })
 
-  const sprintTasks = tasks.filter(task => task.isInSprint)
-  const activeTasks = tasks.filter(task => task.status !== 'Done' && task.status !== 'Rejected')
-  const completedTasks = tasks.filter(task => task.status === 'Done' || task.status === 'Rejected')
   const totalPRs = tasks.reduce((sum, task) => sum + task.pullRequests.length, 0)
+
+  // Helper function to toggle status filter
+  const toggleStatusFilter = (status: string) => {
+    setStatusFilters(prev => ({
+      ...prev,
+      [status]: !prev[status]
+    }))
+  }
+
+  // Get status counts for display
+  const statusCounts = Object.keys(statusFilters).reduce((acc, status) => {
+    acc[status] = tasks.filter(task => task.status === status).length
+    return acc
+  }, {} as Record<string, number>)
 
   if (loading) {
     return (
@@ -154,10 +149,9 @@ export function Dashboard() {
               <Users className="h-4 w-4" />
               <span>{tasks.length} Tasks</span>
             </div>
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <Clock className="h-4 w-4" />
-              <span>{sprintTasks.length} in Sprint</span>
-            </div>
+                         <div className="flex items-center gap-2 text-sm text-gray-600">
+               <span>{tasks.length} Total Tasks</span>
+             </div>
             <Button
               variant="outline"
               size="sm"
@@ -173,87 +167,27 @@ export function Dashboard() {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            {/* Repository Filter */}
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-gray-700">Repository:</span>
-              <Select value={selectedRepo} onValueChange={setSelectedRepo}>
-                <SelectTrigger className="w-64">
-                  <SelectValue placeholder="All repositories" />
-                </SelectTrigger>
-                                 <SelectContent>
-                   <SelectItem value="all">All repositories</SelectItem>
-                   {repositories.map((repo) => (
-                     <SelectItem key={repo.id} value={repo.full_name}>
-                       {repo.full_name}
-                     </SelectItem>
-                   ))}
-                 </SelectContent>
-              </Select>
-            </div>
-
-            {/* Sprint Filter */}
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-gray-700">Sprint:</span>
-              <div className="flex gap-1">
-                <Button
-                  variant={sprintFilter === 'all' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setSprintFilter('all')}
-                >
-                  All ({tasks.length})
-                </Button>
-                <Button
-                  variant={sprintFilter === 'sprint' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setSprintFilter('sprint')}
-                >
-                  <Clock className="h-4 w-4 mr-1" />
-                  Sprint ({sprintTasks.length})
-                </Button>
-                <Button
-                  variant={sprintFilter === 'backlog' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setSprintFilter('backlog')}
-                >
-                  Backlog ({tasks.length - sprintTasks.length})
-                </Button>
-              </div>
-            </div>
-
-            {/* Status Filter */}
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-gray-700">Status:</span>
-              <div className="flex gap-1">
-                <Button
-                  variant={statusFilter === 'all' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setStatusFilter('all')}
-                >
-                  All ({tasks.length})
-                </Button>
-                <Button
-                  variant={statusFilter === 'active' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setStatusFilter('active')}
-                >
-                  Active ({activeTasks.length})
-                </Button>
-                <Button
-                  variant={statusFilter === 'completed' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setStatusFilter('completed')}
-                >
-                  Completed ({completedTasks.length})
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+             {/* Status Filters */}
+       <div className="bg-white border-b border-gray-200">
+         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+           <div className="flex items-center gap-2">
+             <span className="text-sm font-medium text-gray-700">Status:</span>
+             <div className="flex flex-wrap gap-1">
+               {Object.keys(statusFilters).map((status) => (
+                 <Button
+                   key={status}
+                   variant={statusFilters[status] ? 'default' : 'outline'}
+                   size="sm"
+                   onClick={() => toggleStatusFilter(status)}
+                   className="text-xs"
+                 >
+                   {status} ({statusCounts[status] || 0})
+                 </Button>
+               ))}
+             </div>
+           </div>
+         </div>
+       </div>
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
