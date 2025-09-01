@@ -273,13 +273,13 @@ export function Dashboard() {
           </div>
         </div>
 
-        {/* Tasks Grid */}
-        {filteredTasks.length > 0 ? (
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-            {filteredTasks.map((task) => (
-              <JiraTaskCard key={task.id} task={task} />
-            ))}
-          </div>
+                 {/* Tasks Grid */}
+         {filteredTasks.length > 0 ? (
+           <div className="grid grid-cols-1 gap-6">
+             {filteredTasks.map((task) => (
+               <JiraTaskCard key={task.id} task={task} />
+             ))}
+           </div>
         ) : (
           <div className="text-center py-12">
             <div className="text-gray-500">

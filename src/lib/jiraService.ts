@@ -50,22 +50,30 @@ export async function fetchJiraTasks(): Promise<JiraTask[]> {
       }
     }
     
-    return allIssues.map((issue: any) => {
-      // Check if task is in sprint - JIRA can store sprint info in different ways
-      const isInSprint = checkIfInSprint(issue)
-      
-      return {
-        id: issue.id,
-        key: issue.key,
-        name: issue.fields.summary,
-        status: issue.fields.status.name,
-        isInSprint,
-        assignee: issue.fields.assignee?.displayName || 'Unassigned',
-        priority: issue.fields.priority?.name || 'Medium',
-        description: issue.fields.description?.content?.[0]?.content?.[0]?.text || '',
-        url: `https://${JIRA_DOMAIN}/browse/${issue.key}`,
-      }
-    })
+    return allIssues
+      .filter((issue: any) => {
+        // Filter out subtasks - they have a parent field or are of subtask type
+        const isSubtask = issue.fields.parent || 
+                         issue.fields.issuetype?.name?.toLowerCase() === 'subtask' ||
+                         issue.fields.issuetype?.subtask === true
+        return !isSubtask
+      })
+      .map((issue: any) => {
+        // Check if task is in sprint - JIRA can store sprint info in different ways
+        const isInSprint = checkIfInSprint(issue)
+        
+        return {
+          id: issue.id,
+          key: issue.key,
+          name: issue.fields.summary,
+          status: issue.fields.status.name,
+          isInSprint,
+          assignee: issue.fields.assignee?.displayName || 'Unassigned',
+          priority: issue.fields.priority?.name || 'Medium',
+          description: issue.fields.description?.content?.[0]?.content?.[0]?.text || '',
+          url: `https://${JIRA_DOMAIN}/browse/${issue.key}`,
+        }
+      })
   } catch (error) {
     console.error('Error fetching JIRA tasks:', error)
     return []
@@ -111,17 +119,25 @@ export async function fetchSprintTasks(): Promise<JiraTask[]> {
       }
     }
     
-    return allIssues.map((issue: any) => ({
-      id: issue.id,
-      key: issue.key,
-      name: issue.fields.summary,
-      status: issue.fields.status.name,
-      isInSprint: true, // These are explicitly sprint tasks
-      assignee: issue.fields.assignee?.displayName || 'Unassigned',
-      priority: issue.fields.priority?.name || 'Medium',
-      description: issue.fields.description?.content?.[0]?.content?.[0]?.text || '',
-      url: `https://${JIRA_DOMAIN}/browse/${issue.key}`,
-    }))
+    return allIssues
+      .filter((issue: any) => {
+        // Filter out subtasks - they have a parent field or are of subtask type
+        const isSubtask = issue.fields.parent || 
+                         issue.fields.issuetype?.name?.toLowerCase() === 'subtask' ||
+                         issue.fields.issuetype?.subtask === true
+        return !isSubtask
+      })
+      .map((issue: any) => ({
+        id: issue.id,
+        key: issue.key,
+        name: issue.fields.summary,
+        status: issue.fields.status.name,
+        isInSprint: true, // These are explicitly sprint tasks
+        assignee: issue.fields.assignee?.displayName || 'Unassigned',
+        priority: issue.fields.priority?.name || 'Medium',
+        description: issue.fields.description?.content?.[0]?.content?.[0]?.text || '',
+        url: `https://${JIRA_DOMAIN}/browse/${issue.key}`,
+      }))
   } catch (error) {
     console.error('Error fetching sprint tasks:', error)
     return []
