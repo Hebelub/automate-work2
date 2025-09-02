@@ -50,7 +50,7 @@ export async function fetchJiraTasks(): Promise<JiraTask[]> {
 
     while (hasMore) {
       const response = await fetch(
-        `https://${JIRA_DOMAIN}/rest/api/3/search?jql=assignee=currentUser() ORDER BY priority DESC&expand=sprint&startAt=${startAt}&maxResults=${maxResults}`,
+        `https://${JIRA_DOMAIN}/rest/api/3/search?jql=assignee=currentUser() AND status NOT IN ('Done', 'Rejected') AND NOT (issuetype = 'DevBug' AND status = 'Ready for PROD') ORDER BY priority DESC&expand=sprint&startAt=${startAt}&maxResults=${maxResults}`,
         {
           headers: {
             'Authorization': `Basic ${auth}`,
@@ -120,7 +120,7 @@ export async function fetchSprintTasks(): Promise<JiraTask[]> {
 
     while (hasMore) {
       const response = await fetch(
-        `https://${JIRA_DOMAIN}/rest/api/3/search?jql=assignee=currentUser() AND sprint in openSprints() ORDER BY priority DESC&expand=sprint&startAt=${startAt}&maxResults=${maxResults}`,
+        `https://${JIRA_DOMAIN}/rest/api/3/search?jql=assignee=currentUser() AND sprint in openSprints() AND status NOT IN ('Done', 'Rejected') AND NOT (issuetype = 'DevBug' AND status = 'Ready for PROD') ORDER BY priority DESC&expand=sprint&startAt=${startAt}&maxResults=${maxResults}`,
         {
           headers: {
             'Authorization': `Basic ${auth}`,

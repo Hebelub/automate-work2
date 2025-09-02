@@ -339,3 +339,54 @@ export async function fetchPullRequestsForTask(taskKey: string, repoFullName?: s
   const allPRs = await fetchPullRequests(repoFullName)
   return allPRs.filter(pr => pr.linkedTaskKey === taskKey)
 }
+
+// Helper function to check rate limits
+export async function checkGitHubRateLimit(): Promise<{
+  remaining: number
+  limit: number
+  resetTime: Date | null
+  isRateLimited: boolean
+}> {
+  if (!GITHUB_TOKEN) {
+    return { remaining: 0, limit: 0, resetTime: null, isRateLimited: true }
+  }
+
+  try {
+    const response = await fetch('https://api.github.com/rate_limit', {
+      headers: {
+        'Authorization': `token ${GITHUB_TOKEN}`,
+        'Accept': 'application/vnd.github.v3+json',
+      },
+    })
+
+    if (response.ok) {
+      const data = await response.json()
+      const core = data.resources.core
+      const resetTime = new Date(core.reset * 1000)
+      const isRateLimited = core.remaining === 0
+      
+      // Debug logging
+      console.log('GitHub Rate Limit Check:', {
+        remaining: core.remaining,
+        limit: core.limit,
+        resetTime: resetTime.toISOString(),
+        isRateLimited,
+        currentTime: new Date().toISOString(),
+        timeUntilReset: Math.max(0, Math.ceil((resetTime.getTime() - Date.now()) / 60000)) + ' minutes'
+      })
+      
+      return {
+        remaining: core.remaining,
+        limit: core.limit,
+        resetTime,
+        isRateLimited
+      }
+    }
+    
+    console.error('Failed to check rate limit:', response.status, response.statusText)
+    return { remaining: 0, limit: 0, resetTime: null, isRateLimited: true }
+  } catch (error) {
+    console.error('Error checking rate limit:', error)
+    return { remaining: 0, limit: 0, resetTime: null, isRateLimited: true }
+  }
+}
