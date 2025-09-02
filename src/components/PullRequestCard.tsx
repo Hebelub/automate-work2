@@ -1,13 +1,29 @@
 import { GitHubPR } from "@/types"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ExternalLink, GitBranch, User, GitPullRequest, CheckCircle, Clock, AlertCircle, Users } from "lucide-react"
+import { ExternalLink, GitBranch, User, GitPullRequest, CheckCircle, Clock, AlertCircle, Users, Copy, Check } from "lucide-react"
+import { useState } from "react"
 
 interface PullRequestCardProps {
   pr: GitHubPR
 }
 
 export function PullRequestCard({ pr }: PullRequestCardProps) {
+  const [copiedRepo, setCopiedRepo] = useState(false)
+  const [copiedBranch, setCopiedBranch] = useState(false)
+
+  const handleCopyRepo = async () => {
+    await navigator.clipboard.writeText(pr.repository || '')
+    setCopiedRepo(true)
+    setTimeout(() => setCopiedRepo(false), 2000)
+  }
+
+  const handleCopyBranch = async () => {
+    await navigator.clipboard.writeText(pr.branch)
+    setCopiedBranch(true)
+    setTimeout(() => setCopiedBranch(false), 2000)
+  }
+
   const getStatusColor = (status: GitHubPR['status']) => {
     switch (status) {
       case 'open':
@@ -92,6 +108,13 @@ export function PullRequestCard({ pr }: PullRequestCardProps) {
             <div className="flex items-center gap-2">
               <GitPullRequest className="h-3 w-3 text-gray-500" />
               <span className="text-xs text-gray-600 font-mono">{pr.repository}</span>
+              <button
+                onClick={handleCopyRepo}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+                title="Copy repository name"
+              >
+                {copiedRepo ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
+              </button>
             </div>
             <Badge className={getStatusColor(pr.status)}>
               #{pr.number} • {pr.isDraft ? 'Draft' : pr.status}
@@ -102,12 +125,13 @@ export function PullRequestCard({ pr }: PullRequestCardProps) {
           <div className="flex items-center gap-2 text-xs text-gray-600">
             <GitBranch className="h-3 w-3" />
             <span className="font-mono">{pr.branch}</span>
-          </div>
-          
-          {/* Author */}
-          <div className="flex items-center gap-2 text-xs text-gray-600">
-            <User className="h-3 w-3" />
-            <span>{pr.author}</span>
+            <button
+              onClick={handleCopyBranch}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+              title="Copy branch name"
+            >
+              {copiedBranch ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
+            </button>
           </div>
 
           {/* Review Status - Only show if not merged */}
