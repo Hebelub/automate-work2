@@ -18,9 +18,9 @@ export function Dashboard() {
     'On Hold': true,
     'QA': true,
     'Ready for PROD': true,
-    'Done': true,
     'Rejected': true,
   })
+  const [issueTypeFilters, setIssueTypeFilters] = useState<Record<string, boolean>>({})
   const [refreshing, setRefreshing] = useState(false)
 
   useEffect(() => {
@@ -43,10 +43,19 @@ export function Dashboard() {
         const fetchedTasks = data.tasks || []
         setTasks(fetchedTasks)
         
+        // Populate issue type filters dynamically
+        const uniqueIssueTypes = [...new Set(fetchedTasks.map((task: TaskWithPRs) => task.issueType))] as string[]
+        const newIssueTypeFilters: Record<string, boolean> = {}
+        uniqueIssueTypes.forEach(issueType => {
+          newIssueTypeFilters[issueType] = true
+        })
+        setIssueTypeFilters(newIssueTypeFilters)
+        
         // Debug: Log all unique status names to see what's actually coming from JIRA
         const actualStatuses = [...new Set(fetchedTasks.map((task: TaskWithPRs) => task.status))] as string[]
         console.log('Actual JIRA statuses found:', actualStatuses)
         console.log('Tasks with their statuses:', fetchedTasks.map((task: TaskWithPRs) => ({ key: task.key, status: task.status })))
+        console.log('Issue types found:', uniqueIssueTypes)
       } catch (err) {
         setError('Failed to load tasks')
         console.error('Error loading dashboard data:', err)
@@ -89,6 +98,9 @@ export function Dashboard() {
     // Status filter - only show tasks whose status is enabled
     if (!statusFilters[task.status]) return false
     
+    // Issue type filter - only show tasks whose issue type is enabled
+    if (!issueTypeFilters[task.issueType]) return false
+    
     return true
   })
 
@@ -99,6 +111,14 @@ export function Dashboard() {
     setStatusFilters(prev => ({
       ...prev,
       [status]: !prev[status]
+    }))
+  }
+
+  // Helper function to toggle issue type filter
+  const toggleIssueTypeFilter = (issueType: string) => {
+    setIssueTypeFilters(prev => ({
+      ...prev,
+      [issueType]: !prev[issueType]
     }))
   }
 
@@ -149,9 +169,11 @@ export function Dashboard() {
               <Users className="h-4 w-4" />
               <span>{tasks.length} Tasks</span>
             </div>
-                         <div className="flex items-center gap-2 text-sm text-gray-600">
-               <span>{tasks.length} Total Tasks</span>
-             </div>
+                                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                     <span>{tasks.length} Total Tasks</span>
+                     <span>•</span>
+                     <span>{Object.keys(issueTypeFilters).length} Issue Types</span>
+                   </div>
             <Button
               variant="outline"
               size="sm"
@@ -167,27 +189,52 @@ export function Dashboard() {
         </div>
       </div>
 
-             {/* Status Filters */}
-       <div className="bg-white border-b border-gray-200">
-         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-           <div className="flex items-center gap-2">
-             <span className="text-sm font-medium text-gray-700">Status:</span>
-             <div className="flex flex-wrap gap-1">
-               {Object.keys(statusFilters).map((status) => (
-                 <Button
-                   key={status}
-                   variant={statusFilters[status] ? 'default' : 'outline'}
-                   size="sm"
-                   onClick={() => toggleStatusFilter(status)}
-                   className="text-xs"
-                 >
-                   {status} ({statusCounts[status] || 0})
-                 </Button>
-               ))}
+                          {/* Status Filters */}
+             <div className="bg-white border-b border-gray-200">
+               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+                 <div className="flex items-center gap-2">
+                   <span className="text-sm font-medium text-gray-700">Status:</span>
+                   <div className="flex flex-wrap gap-1">
+                     {Object.keys(statusFilters).map((status) => (
+                       <Button
+                         key={status}
+                         variant={statusFilters[status] ? 'default' : 'outline'}
+                         size="sm"
+                         onClick={() => toggleStatusFilter(status)}
+                         className="text-xs"
+                       >
+                         {status} ({statusCounts[status] || 0})
+                       </Button>
+                     ))}
+                   </div>
+                 </div>
+               </div>
              </div>
-           </div>
-         </div>
-       </div>
+             
+             {/* Issue Type Filters */}
+             <div className="bg-white border-b border-gray-200">
+               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+                 <div className="flex items-center gap-2">
+                   <span className="text-sm font-medium text-gray-700">Issue Type:</span>
+                   <div className="flex flex-wrap gap-1">
+                     {Object.keys(issueTypeFilters).map((issueType) => {
+                       const count = tasks.filter(task => task.issueType === issueType).length
+                       return (
+                         <Button
+                           key={issueType}
+                           variant={issueTypeFilters[issueType] ? 'default' : 'outline'}
+                           size="sm"
+                           onClick={() => toggleIssueTypeFilter(issueType)}
+                           className="text-xs"
+                         >
+                           {issueType} ({count})
+                         </Button>
+                       )
+                     })}
+                   </div>
+                 </div>
+               </div>
+             </div>
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -202,8 +249,9 @@ export function Dashboard() {
               {filteredTasks.length} tasks
             </Badge>
           </div>
-          <div className="text-sm text-gray-600">
-            Total PRs: {totalPRs}
+          <div className="flex items-center gap-4 text-sm text-gray-600">
+            <span>Total PRs: {totalPRs}</span>
+            <span>Issue Types: {[...new Set(tasks.map(task => task.issueType))].join(', ')}</span>
           </div>
         </div>
 

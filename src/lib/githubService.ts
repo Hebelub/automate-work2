@@ -22,6 +22,9 @@ export async function fetchUserRepositories(): Promise<GitHubRepo[]> {
     return []
   }
 
+  console.log('GitHub token is configured, length:', GITHUB_TOKEN.length)
+  console.log('GitHub token starts with:', GITHUB_TOKEN.substring(0, 10) + '...')
+
   try {
     console.log('Fetching user repositories from GitHub...')
     
@@ -37,7 +40,13 @@ export async function fetchUserRepositories(): Promise<GitHubRepo[]> {
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error(`GitHub API error: ${response.status} ${response.statusText}`, errorText)
+      console.error(`GitHub API error: ${response.status} ${response.statusText}`)
+      console.error('Error details:', errorText)
+      console.error('Request URL:', `https://api.github.com/user/repos?per_page=100&sort=updated&direction=desc`)
+      console.error('Headers:', {
+        'Authorization': `token ${GITHUB_TOKEN ? '***' : 'MISSING'}`,
+        'Accept': 'application/vnd.github.v3+json',
+      })
       throw new Error(`GitHub API error: ${response.status} ${response.statusText}`)
     }
 
@@ -129,7 +138,8 @@ async function fetchPRsFromRepo(repoFullName: string): Promise<GitHubPR[]> {
     }
 
     const data = await response.json()
-    console.log(`Fetched ${data.length} PRs from ${repoFullName}`)
+          console.log(`Fetched ${data.length} PRs from ${repoFullName}`)
+      console.log(`PR branch names:`, data.map((pr: any) => pr.head.ref))
     
     const prs = await Promise.all(data.map(async (pr: any) => {
       const linkedTaskKey = extractTaskKeyFromBranch(pr.head.ref)
@@ -228,12 +238,12 @@ async function refreshActiveReposCache(): Promise<void> {
     
     // Sample a subset of repositories to find active ones
     // Start with the most recently updated repositories
-    const recentRepos = repos.slice(0, 50) // Check top 50 most recent repos
+    const recentRepos = repos.slice(0, 15) // Check top 50 most recent repos
     
     for (const repo of recentRepos) {
       try {
         const response = await fetch(
-          `https://api.github.com/repos/${repo.full_name}/pulls?state=all&per_page=10&sort=updated&direction=desc`,
+          `https://api.github.com/repos/${repo.full_name}/pulls?state=all&per_page=15&sort=updated&direction=desc`,
           {
             headers: {
               'Authorization': `token ${GITHUB_TOKEN}`,
@@ -248,6 +258,9 @@ async function refreshActiveReposCache(): Promise<void> {
           // Check if any PR has a linked task key
           const hasLinkedPRs = prs.some((pr: any) => {
             const linkedTaskKey = extractTaskKeyFromBranch(pr.head.ref)
+            if (linkedTaskKey) {
+              console.log(`Found linked PR in ${repo.full_name}: branch "${pr.head.ref}" -> task "${linkedTaskKey}"`)
+            }
             return linkedTaskKey !== undefined
           })
           
@@ -309,12 +322,16 @@ function extractTaskKeyFromBranch(branchName: string): string | undefined {
       const taskKey = match[1]
       // If it's just a number, prefix with ROC (based on your JIRA project)
       if (/^\d+$/.test(taskKey)) {
-        return `ROC-${taskKey}`
+        const result = `ROC-${taskKey}`
+        console.log(`Extracted task key from branch "${branchName}": ${result}`)
+        return result
       }
+      console.log(`Extracted task key from branch "${branchName}": ${taskKey}`)
       return taskKey
     }
   }
   
+  console.log(`No task key found in branch: "${branchName}"`)
   return undefined
 }
 

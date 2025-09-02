@@ -2,11 +2,12 @@ export interface JiraTask {
   id: string
   key: string
   name: string
-  status: 'To Do' | 'In Progress' | 'QA' | 'Done' | 'Blocked' | 'Rejected'
+  status: 'Open' | 'In Progress' | 'On Hold' | 'QA' | 'Ready for PROD' | 'Done' | 'Rejected'
+  issueType: string
   isInSprint: boolean
   assignee: string
-  priority: 'Low' | 'Medium' | 'High' | 'Critical'
-  description?: string
+  priority: string
+  description: string
   url: string
 }
 

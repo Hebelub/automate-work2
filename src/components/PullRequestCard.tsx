@@ -110,18 +110,20 @@ export function PullRequestCard({ pr }: PullRequestCardProps) {
             <span>{pr.author}</span>
           </div>
 
-          {/* Review Status */}
-          <div className="flex items-center gap-2">
-            <Badge className={getReviewStatusColor(pr.reviewStatus)}>
-              <div className="flex items-center gap-1">
-                {getReviewStatusIcon(pr.reviewStatus)}
-                {getReviewStatusText(pr.reviewStatus)}
-              </div>
-            </Badge>
-          </div>
+          {/* Review Status - Only show if not merged */}
+          {pr.status !== 'merged' && (
+            <div className="flex items-center gap-2">
+              <Badge className={getReviewStatusColor(pr.reviewStatus)}>
+                <div className="flex items-center gap-1">
+                  {getReviewStatusIcon(pr.reviewStatus)}
+                  {getReviewStatusText(pr.reviewStatus)}
+                </div>
+              </Badge>
+            </div>
+          )}
 
-          {/* Reviewers Information */}
-          {pr.requestedReviewers.length > 0 && (
+          {/* Reviewers Information - Only show if not merged */}
+          {pr.status !== 'merged' && pr.requestedReviewers.length > 0 && (
             <div className="text-xs text-gray-600">
               <div className="flex items-center gap-1 mb-1">
                 <Clock className="h-3 w-3" />
@@ -137,7 +139,7 @@ export function PullRequestCard({ pr }: PullRequestCardProps) {
             </div>
           )}
 
-          {pr.approvedReviewers.length > 0 && (
+          {pr.status !== 'merged' && pr.approvedReviewers.length > 0 && (
             <div className="text-xs text-gray-600">
               <div className="flex items-center gap-1 mb-1">
                 <CheckCircle className="h-3 w-3" />

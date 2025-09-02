@@ -67,6 +67,7 @@ export async function fetchJiraTasks(): Promise<JiraTask[]> {
           key: issue.key,
           name: issue.fields.summary,
           status: issue.fields.status.name,
+          issueType: issue.fields.issuetype?.name || 'Unknown',
           isInSprint,
           assignee: issue.fields.assignee?.displayName || 'Unassigned',
           priority: issue.fields.priority?.name || 'Medium',
@@ -132,6 +133,7 @@ export async function fetchSprintTasks(): Promise<JiraTask[]> {
         key: issue.key,
         name: issue.fields.summary,
         status: issue.fields.status.name,
+        issueType: issue.fields.issuetype?.name || 'Unknown',
         isInSprint: true, // These are explicitly sprint tasks
         assignee: issue.fields.assignee?.displayName || 'Unassigned',
         priority: issue.fields.priority?.name || 'Medium',

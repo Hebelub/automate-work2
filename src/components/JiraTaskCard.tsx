@@ -11,15 +11,17 @@ interface JiraTaskCardProps {
 export function JiraTaskCard({ task }: JiraTaskCardProps) {
   const getStatusColor = (status: TaskWithPRs['status']) => {
     switch (status) {
-      case 'To Do':
+      case 'Open':
         return 'bg-gray-100 text-gray-800 border-gray-200'
       case 'In Progress':
         return 'bg-blue-100 text-blue-800 border-blue-200'
+      case 'On Hold':
+        return 'bg-orange-100 text-orange-800 border-orange-200'
       case 'QA':
         return 'bg-yellow-100 text-yellow-800 border-yellow-200'
-      case 'Done':
+      case 'Ready for PROD':
         return 'bg-green-100 text-green-800 border-green-200'
-      case 'Blocked':
+      case 'Rejected':
         return 'bg-red-100 text-red-800 border-red-200'
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200'
@@ -38,6 +40,23 @@ export function JiraTaskCard({ task }: JiraTaskCardProps) {
         return 'bg-red-100 text-red-800 border-red-200'
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200'
+    }
+  }
+
+  const getIssueTypeColor = (issueType: string) => {
+    switch (issueType.toLowerCase()) {
+      case 'bug':
+        return 'bg-red-100 text-red-800 border-red-200'
+      case 'story':
+        return 'bg-blue-100 text-blue-800 border-blue-200'
+      case 'task':
+        return 'bg-green-100 text-green-800 border-green-200'
+      case 'sub-task':
+        return 'bg-gray-100 text-gray-800 border-gray-200'
+      case 'epic':
+        return 'bg-purple-100 text-purple-800 border-purple-200'
+      default:
+        return 'bg-indigo-100 text-indigo-800 border-indigo-200'
     }
   }
 
@@ -63,6 +82,9 @@ export function JiraTaskCard({ task }: JiraTaskCardProps) {
             <div className="flex items-center gap-2 mb-3">
               <Badge className={getStatusColor(task.status)}>
                 {task.status}
+              </Badge>
+              <Badge className={getIssueTypeColor(task.issueType)}>
+                {task.issueType}
               </Badge>
               <Badge className={getPriorityColor(task.priority)}>
                 {task.priority}
