@@ -2,13 +2,25 @@ import { TaskWithPRs } from "@/types"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PullRequestCard } from "@/components/PullRequestCard"
-import { ExternalLink, Clock, User, AlertTriangle } from "lucide-react"
+import { ExternalLink, Clock, User, AlertTriangle, Copy, Check } from "lucide-react"
+import { useState } from "react"
 
 interface JiraTaskCardProps {
   task: TaskWithPRs
 }
 
 export function JiraTaskCard({ task }: JiraTaskCardProps) {
+  const [copiedTaskKey, setCopiedTaskKey] = useState(false)
+
+  const handleCopyTaskKey = () => {
+    navigator.clipboard.writeText(task.key).then(() => {
+      setCopiedTaskKey(true)
+      setTimeout(() => setCopiedTaskKey(false), 2000)
+    }).catch(() => {
+      // Handle error if copying fails
+    })
+  }
+
   const getStatusColor = (status: TaskWithPRs['status']) => {
     switch (status) {
       case 'Open':
@@ -66,18 +78,19 @@ export function JiraTaskCard({ task }: JiraTaskCardProps) {
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
-              <CardTitle className="text-lg font-semibold">
-                {task.key}: {task.name}
-              </CardTitle>
-              <a
-                href={task.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-gray-500 hover:text-gray-700 transition-colors"
+              <span className="text-sm font-mono text-gray-600">{task.key}</span>
+              <button
+                onClick={handleCopyTaskKey}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+                title="Copy task key"
               >
-                <ExternalLink className="h-4 w-4" />
-              </a>
+                {copiedTaskKey ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
+              </button>
             </div>
+            
+            <CardTitle className="text-lg font-semibold mb-3">
+              {task.name}
+            </CardTitle>
             
             <div className="flex items-center gap-2 mb-3">
               <Badge className={getStatusColor(task.status)}>
@@ -96,8 +109,16 @@ export function JiraTaskCard({ task }: JiraTaskCardProps) {
                 </Badge>
               )}
             </div>
-            
           </div>
+          
+          <a
+            href={task.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-gray-500 hover:text-gray-700 transition-colors"
+          >
+            <ExternalLink className="h-4 w-4" />
+          </a>
         </div>
       </CardHeader>
       
