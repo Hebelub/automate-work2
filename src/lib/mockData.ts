@@ -7,6 +7,7 @@ const mockJiraTasks: JiraTask[] = [
     key: "PROJ-123",
     name: "Implement user authentication system",
     status: "In Progress",
+    issueType: "Story",
     isInSprint: true,
     assignee: "John Doe",
     priority: "High",
@@ -18,6 +19,7 @@ const mockJiraTasks: JiraTask[] = [
     key: "PROJ-124",
     name: "Design responsive dashboard layout",
     status: "QA",
+    issueType: "Task",
     isInSprint: true,
     assignee: "Jane Smith",
     priority: "Medium",
@@ -28,7 +30,8 @@ const mockJiraTasks: JiraTask[] = [
     id: "3",
     key: "PROJ-125",
     name: "Fix critical security vulnerability",
-    status: "To Do",
+    status: "Open",
+    issueType: "Bug",
     isInSprint: false,
     assignee: "Mike Johnson",
     priority: "Critical",
@@ -40,6 +43,7 @@ const mockJiraTasks: JiraTask[] = [
     key: "PROJ-126",
     name: "Add unit tests for API endpoints",
     status: "Done",
+    issueType: "Task",
     isInSprint: true,
     assignee: "Sarah Wilson",
     priority: "Low",
@@ -50,7 +54,8 @@ const mockJiraTasks: JiraTask[] = [
     id: "5",
     key: "PROJ-127",
     name: "Optimize database queries",
-    status: "Blocked",
+    status: "On Hold",
+    issueType: "Story",
     isInSprint: true,
     assignee: "Alex Brown",
     priority: "High",
@@ -71,7 +76,12 @@ const mockGitHubPRs: GitHubPR[] = [
     author: "John Doe",
     createdAt: "2024-01-15T10:30:00Z",
     updatedAt: "2024-01-16T14:20:00Z",
-    linkedTaskKey: "PROJ-123"
+    linkedTaskKey: "PROJ-123",
+    repository: "company/repo",
+    isDraft: false,
+    reviewStatus: "pending",
+    requestedReviewers: ["Jane Smith", "Mike Johnson"],
+    approvedReviewers: []
   },
   {
     id: "2",
@@ -83,7 +93,12 @@ const mockGitHubPRs: GitHubPR[] = [
     author: "John Doe",
     createdAt: "2024-01-16T09:15:00Z",
     updatedAt: "2024-01-16T16:45:00Z",
-    linkedTaskKey: "PROJ-123"
+    linkedTaskKey: "PROJ-123",
+    repository: "company/repo",
+    isDraft: false,
+    reviewStatus: "approved",
+    requestedReviewers: ["Jane Smith"],
+    approvedReviewers: ["Jane Smith"]
   },
   {
     id: "3",
@@ -95,7 +110,12 @@ const mockGitHubPRs: GitHubPR[] = [
     author: "Jane Smith",
     createdAt: "2024-01-14T11:00:00Z",
     updatedAt: "2024-01-16T13:30:00Z",
-    linkedTaskKey: "PROJ-124"
+    linkedTaskKey: "PROJ-124",
+    repository: "company/repo",
+    isDraft: false,
+    reviewStatus: "changes_requested",
+    requestedReviewers: ["John Doe"],
+    approvedReviewers: []
   },
   {
     id: "4",
@@ -107,7 +127,12 @@ const mockGitHubPRs: GitHubPR[] = [
     author: "Jane Smith",
     createdAt: "2024-01-13T15:20:00Z",
     updatedAt: "2024-01-15T10:00:00Z",
-    linkedTaskKey: "PROJ-124"
+    linkedTaskKey: "PROJ-124",
+    repository: "company/repo",
+    isDraft: false,
+    reviewStatus: "approved",
+    requestedReviewers: ["John Doe"],
+    approvedReviewers: ["John Doe"]
   },
   {
     id: "5",
@@ -119,7 +144,12 @@ const mockGitHubPRs: GitHubPR[] = [
     author: "Sarah Wilson",
     createdAt: "2024-01-12T08:45:00Z",
     updatedAt: "2024-01-14T17:30:00Z",
-    linkedTaskKey: "PROJ-126"
+    linkedTaskKey: "PROJ-126",
+    repository: "company/repo",
+    isDraft: false,
+    reviewStatus: "approved",
+    requestedReviewers: ["Mike Johnson"],
+    approvedReviewers: ["Mike Johnson"]
   },
   {
     id: "6",
@@ -131,7 +161,12 @@ const mockGitHubPRs: GitHubPR[] = [
     author: "Sarah Wilson",
     createdAt: "2024-01-11T12:00:00Z",
     updatedAt: "2024-01-13T09:15:00Z",
-    linkedTaskKey: "PROJ-126"
+    linkedTaskKey: "PROJ-126",
+    repository: "company/repo",
+    isDraft: false,
+    reviewStatus: "no_reviews",
+    requestedReviewers: [],
+    approvedReviewers: []
   },
   {
     id: "7",
@@ -143,7 +178,12 @@ const mockGitHubPRs: GitHubPR[] = [
     author: "Alex Brown",
     createdAt: "2024-01-16T07:30:00Z",
     updatedAt: "2024-01-16T07:30:00Z",
-    linkedTaskKey: "PROJ-127"
+    linkedTaskKey: "PROJ-127",
+    repository: "company/repo",
+    isDraft: true,
+    reviewStatus: "no_reviews",
+    requestedReviewers: [],
+    approvedReviewers: []
   }
 ]
 
@@ -160,10 +200,7 @@ export function getTasksByStatus(status: JiraTask['status']): TaskWithPRs[] {
   return getTasksWithPRs().filter(task => task.status === status)
 }
 
-// Function to get tasks in sprint
-export function getTasksInSprint(): TaskWithPRs[] {
-  return getTasksWithPRs().filter(task => task.isInSprint)
-}
+
 
 // Function to get all PRs
 export function getAllPRs(): GitHubPR[] {

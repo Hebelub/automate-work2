@@ -106,70 +106,7 @@ export async function fetchJiraTasks(): Promise<JiraTask[]> {
   }
 }
 
-export async function fetchSprintTasks(): Promise<JiraTask[]> {
-  if (!JIRA_DOMAIN || !JIRA_EMAIL || !JIRA_API_TOKEN) {
-    return []
-  }
 
-  try {
-    // Fetch all sprint tasks with pagination
-    const allIssues: any[] = []
-    let startAt = 0
-    const maxResults = 100
-    let hasMore = true
-
-    while (hasMore) {
-      const response = await fetch(
-        `https://${JIRA_DOMAIN}/rest/api/3/search?jql=assignee=currentUser() AND sprint in openSprints() AND status NOT IN ('Done', 'Rejected') AND NOT (issuetype = 'DevBug' AND status = 'Ready for PROD') ORDER BY priority DESC&expand=sprint&startAt=${startAt}&maxResults=${maxResults}`,
-        {
-          headers: {
-            'Authorization': `Basic ${auth}`,
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-          },
-        }
-      )
-
-      if (!response.ok) {
-        throw new Error(`JIRA API error: ${response.status} ${response.statusText}`)
-      }
-
-      const data = await response.json()
-      allIssues.push(...data.issues)
-      
-      // Check if we have more results
-      if (data.issues.length < maxResults || startAt + maxResults >= data.total) {
-        hasMore = false
-      } else {
-        startAt += maxResults
-      }
-    }
-    
-    return allIssues
-      .filter((issue: any) => {
-        // Filter out subtasks - they have a parent field or are of subtask type
-        const isSubtask = issue.fields.parent || 
-                         issue.fields.issuetype?.name?.toLowerCase() === 'subtask' ||
-                         issue.fields.issuetype?.subtask === true
-        return !isSubtask
-      })
-      .map((issue: any) => ({
-        id: issue.id,
-        key: issue.key,
-        name: issue.fields.summary,
-        status: issue.fields.status.name,
-        issueType: issue.fields.issuetype?.name || 'Unknown',
-        isInSprint: true, // These are explicitly sprint tasks
-        assignee: issue.fields.assignee?.displayName || 'Unassigned',
-        priority: issue.fields.priority?.name || 'Medium',
-        description: extractFullDescription(issue.fields.description),
-        url: `https://${JIRA_DOMAIN}/browse/${issue.key}`,
-      }))
-  } catch (error) {
-    console.error('Error fetching sprint tasks:', error)
-    return []
-  }
-}
 
 function checkIfInSprint(issue: any): boolean {
   // Method 1: Check customfield_10020 (sprint field) for active sprints

@@ -1,5 +1,5 @@
 import { TaskWithPRs, JiraTask, GitHubPR } from "@/types"
-import { fetchJiraTasks, fetchSprintTasks } from "./jiraService"
+import { fetchJiraTasks } from "./jiraService"
 import { fetchPullRequests, clearActiveReposCache } from "./githubService"
 
 // Cache for PRs to avoid refetching
@@ -59,22 +59,7 @@ export async function getTasksWithPRs(selectedRepo?: string): Promise<TaskWithPR
   }
 }
 
-export async function getSprintTasksWithPRs(): Promise<TaskWithPRs[]> {
-  try {
-    const [sprintTasks, allPRs] = await Promise.all([
-      fetchSprintTasks(),
-      fetchPullRequests()
-    ])
 
-    return sprintTasks.map(task => ({
-      ...task,
-      pullRequests: allPRs.filter(pr => pr.linkedTaskKey === task.key)
-    }))
-  } catch (error) {
-    console.error('Error fetching sprint data:', error)
-    return []
-  }
-}
 
 export async function getTasksByStatus(status: JiraTask['status']): Promise<TaskWithPRs[]> {
   const allTasks = await getTasksWithPRs()
