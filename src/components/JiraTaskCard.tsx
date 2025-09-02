@@ -97,10 +97,6 @@ export function JiraTaskCard({ task }: JiraTaskCardProps) {
               )}
             </div>
             
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <User className="h-4 w-4" />
-              <span>{task.assignee}</span>
-            </div>
           </div>
         </div>
       </CardHeader>
@@ -122,16 +118,11 @@ export function JiraTaskCard({ task }: JiraTaskCardProps) {
             )}
           </div>
           
-          {task.pullRequests.length > 0 ? (
+          {task.pullRequests.length > 0 && (
             <div className="space-y-2">
               {task.pullRequests.map((pr) => (
                 <PullRequestCard key={pr.id} pr={pr} />
               ))}
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 text-sm text-gray-500 bg-gray-50 p-3 rounded-md">
-              <AlertTriangle className="h-4 w-4" />
-              <span>No pull requests linked to this task</span>
             </div>
           )}
         </div>
