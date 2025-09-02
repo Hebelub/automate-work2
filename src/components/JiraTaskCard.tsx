@@ -77,7 +77,7 @@ export function JiraTaskCard({ task }: JiraTaskCardProps) {
       <CardHeader className="pb-4">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-3">
               <span className="text-sm font-mono text-gray-600">{task.key}</span>
               <button
                 onClick={handleCopyTaskKey}
@@ -86,13 +86,7 @@ export function JiraTaskCard({ task }: JiraTaskCardProps) {
               >
                 {copiedTaskKey ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
               </button>
-            </div>
-            
-            <CardTitle className="text-lg font-semibold mb-3">
-              {task.name}
-            </CardTitle>
-            
-            <div className="flex items-center gap-2 mb-3">
+              
               <Badge className={getStatusColor(task.status)}>
                 {task.status}
               </Badge>
@@ -109,6 +103,10 @@ export function JiraTaskCard({ task }: JiraTaskCardProps) {
                 </Badge>
               )}
             </div>
+            
+            <CardTitle className="text-lg font-semibold mb-3">
+              {task.name}
+            </CardTitle>
           </div>
           
           <a
