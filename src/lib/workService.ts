@@ -11,11 +11,11 @@ export async function getTasksWithPRs(selectedRepo?: string): Promise<TaskWithPR
   try {
     console.log('Starting to fetch work data...')
     
-         // Check if we need to fetch PRs (cache expired or different repo selected)
-     const now = Date.now()
-     const shouldFetchPRs = !cachedPRs.length || 
-                           (now - cachedPRsTimestamp > CACHE_DURATION) ||
-                           (selectedRepo && selectedRepo !== 'all' && !cachedPRs.some(pr => pr.repository === selectedRepo))
+    // Check if we need to fetch PRs (cache expired or different repo selected)
+    const now = Date.now()
+    const shouldFetchPRs = !cachedPRs.length || 
+                    (now - cachedPRsTimestamp > CACHE_DURATION) ||
+                    (selectedRepo && selectedRepo !== 'all' && !cachedPRs.some(pr => pr.repository?.toLowerCase() === selectedRepo.toLowerCase()))
     
     let allPRs: GitHubPR[]
     
@@ -26,9 +26,9 @@ export async function getTasksWithPRs(selectedRepo?: string): Promise<TaskWithPR
       cachedPRsTimestamp = now
          } else {
        console.log('Using cached PR data...')
-       allPRs = selectedRepo && selectedRepo !== 'all'
-         ? cachedPRs.filter(pr => pr.repository === selectedRepo)
-         : cachedPRs
+             allPRs = selectedRepo && selectedRepo !== 'all'
+        ? cachedPRs.filter(pr => pr.repository?.toLowerCase() === selectedRepo.toLowerCase())
+        : cachedPRs
      }
     
     // Fetch JIRA tasks

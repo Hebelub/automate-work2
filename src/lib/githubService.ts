@@ -312,7 +312,7 @@ function extractTaskKeyFromBranch(branchName: string): string | undefined {
   // Common patterns: feature/PROJ-123, bugfix/PROJ-456, etc.
   const patterns = [
     /(?:feature|bugfix|hotfix|release)\/([A-Z]+-\d+)/i,
-    /([A-Z]+-\d+)/, // Just the task key
+    /([A-Z]+-\d+)/i, // Just the task key - case insensitive
     /(?:ROC|PROJ|JIRA)-(\d+)/i, // Specific project patterns
   ]
   
