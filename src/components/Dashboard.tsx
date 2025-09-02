@@ -56,6 +56,15 @@ export function Dashboard() {
         console.log('Actual JIRA statuses found:', actualStatuses)
         console.log('Tasks with their statuses:', fetchedTasks.map((task: TaskWithPRs) => ({ key: task.key, status: task.status })))
         console.log('Issue types found:', uniqueIssueTypes)
+        
+        // Debug: Log task descriptions
+        console.log('Task descriptions debug:', fetchedTasks.map((task: TaskWithPRs) => ({
+          key: task.key,
+          description: task.description,
+          descriptionLength: task.description?.length || 0,
+          hasDescription: !!task.description,
+          repository: task.pullRequests?.[0]?.repository || 'No PRs'
+        })))
       } catch (err) {
         setError('Failed to load tasks')
         console.error('Error loading dashboard data:', err)

@@ -10,6 +10,31 @@ if (!JIRA_DOMAIN || !JIRA_EMAIL || !JIRA_API_TOKEN) {
 
 const auth = Buffer.from(`${JIRA_EMAIL}:${JIRA_API_TOKEN}`).toString('base64')
 
+// Helper function to extract full description from JIRA's complex structure
+function extractFullDescription(description: any): string {
+  if (!description || !description.content) {
+    return ''
+  }
+  
+  let fullText = ''
+  
+  // Recursively extract text from all content blocks
+  function extractText(content: any[]) {
+    if (!Array.isArray(content)) return
+    
+    for (const item of content) {
+      if (item.type === 'text' && item.text) {
+        fullText += item.text
+      } else if (item.content && Array.isArray(item.content)) {
+        extractText(item.content)
+      }
+    }
+  }
+  
+  extractText(description.content)
+  return fullText.trim()
+}
+
 export async function fetchJiraTasks(): Promise<JiraTask[]> {
   if (!JIRA_DOMAIN || !JIRA_EMAIL || !JIRA_API_TOKEN) {
     console.warn('JIRA credentials not configured, returning empty array')
@@ -71,7 +96,7 @@ export async function fetchJiraTasks(): Promise<JiraTask[]> {
           isInSprint,
           assignee: issue.fields.assignee?.displayName || 'Unassigned',
           priority: issue.fields.priority?.name || 'Medium',
-          description: issue.fields.description?.content?.[0]?.content?.[0]?.text || '',
+          description: extractFullDescription(issue.fields.description),
           url: `https://${JIRA_DOMAIN}/browse/${issue.key}`,
         }
       })
@@ -137,7 +162,7 @@ export async function fetchSprintTasks(): Promise<JiraTask[]> {
         isInSprint: true, // These are explicitly sprint tasks
         assignee: issue.fields.assignee?.displayName || 'Unassigned',
         priority: issue.fields.priority?.name || 'Medium',
-        description: issue.fields.description?.content?.[0]?.content?.[0]?.text || '',
+        description: extractFullDescription(issue.fields.description),
         url: `https://${JIRA_DOMAIN}/browse/${issue.key}`,
       }))
   } catch (error) {
