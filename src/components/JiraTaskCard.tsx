@@ -93,9 +93,11 @@ export function JiraTaskCard({ task }: JiraTaskCardProps) {
               <Badge className={getIssueTypeColor(task.issueType)}>
                 {task.issueType}
               </Badge>
-              <Badge className={getPriorityColor(task.priority)}>
-                {task.priority}
-              </Badge>
+              {task.priority !== 'Medium' && task.priority !== 'Normal' && (
+                <Badge className={getPriorityColor(task.priority)}>
+                  {task.priority}
+                </Badge>
+              )}
               {!task.isInSprint && (
                 <Badge className="bg-gray-100 text-gray-600 border-gray-200">
                   <Clock className="h-3 w-3 mr-1" />
