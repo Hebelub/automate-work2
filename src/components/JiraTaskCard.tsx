@@ -96,10 +96,10 @@ export function JiraTaskCard({ task }: JiraTaskCardProps) {
               <Badge className={getPriorityColor(task.priority)}>
                 {task.priority}
               </Badge>
-              {task.isInSprint && (
-                <Badge className="bg-purple-100 text-purple-800 border-purple-200">
+              {!task.isInSprint && (
+                <Badge className="bg-gray-100 text-gray-600 border-gray-200">
                   <Clock className="h-3 w-3 mr-1" />
-                  Sprint
+                  Not in Sprint
                 </Badge>
               )}
             </div>
