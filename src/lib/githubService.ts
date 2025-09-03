@@ -121,7 +121,10 @@ export async function fetchPullRequests(repoFullName?: string): Promise<GitHubPR
 }
 
 async function fetchPRsFromRepo(repoFullName: string): Promise<GitHubPR[]> {
+  let apiCallCount = 0
   try {
+    console.log(`🔍 Fetching PRs from GitHub repo: ${repoFullName}`)
+    apiCallCount++
     const response = await fetch(
       `https://api.github.com/repos/${repoFullName}/pulls?state=all&per_page=100&sort=updated&direction=desc`,
       {
@@ -138,71 +141,75 @@ async function fetchPRsFromRepo(repoFullName: string): Promise<GitHubPR[]> {
     }
 
     const data = await response.json()
-          console.log(`Fetched ${data.length} PRs from ${repoFullName}`)
-      console.log(`PR branch names:`, data.map((pr: any) => pr.head.ref))
+    console.log(`✅ Fetched ${data.length} PRs from ${repoFullName}`)
+    console.log(`PR branch names:`, data.map((pr: any) => pr.head.ref))
     
     const prs = await Promise.all(data.map(async (pr: any) => {
       const linkedTaskKey = extractTaskKeyFromBranch(pr.head.ref)
+      const prStatus = pr.merged_at ? 'merged' : pr.state
       
-      // Fetch review information for this PR
+      // Only fetch review data for open PRs
       let reviewStatus: 'pending' | 'approved' | 'changes_requested' | 'no_reviews' = 'no_reviews'
       let requestedReviewers: string[] = []
       let approvedReviewers: string[] = []
       
-      try {
-        const reviewsResponse = await fetch(
-          `https://api.github.com/repos/${repoFullName}/pulls/${pr.number}/reviews`,
-          {
-            headers: {
-              'Authorization': `token ${GITHUB_TOKEN}`,
-              'Accept': 'application/vnd.github.v3+json',
-            },
-          }
-        )
-        
-        if (reviewsResponse.ok) {
-          const reviews = await reviewsResponse.json()
+      if (prStatus === 'open') {
+        try {
+          apiCallCount++
+          const reviewsResponse = await fetch(
+            `https://api.github.com/repos/${repoFullName}/pulls/${pr.number}/reviews`,
+            {
+              headers: {
+                'Authorization': `token ${GITHUB_TOKEN}`,
+                'Accept': 'application/vnd.github.v3+json',
+              },
+            }
+          )
           
-          // Get requested reviewers
-          if (pr.requested_reviewers) {
-            requestedReviewers = pr.requested_reviewers.map((reviewer: any) => reviewer.login)
-          }
-          
-          // Process review status
-          if (reviews.length > 0) {
-            const latestReviews = new Map()
-            reviews.forEach((review: any) => {
-              latestReviews.set(review.user.login, review.state)
-            })
+          if (reviewsResponse.ok) {
+            const reviews = await reviewsResponse.json()
             
-            const hasApprovals = Array.from(latestReviews.values()).some((state: string) => state === 'approved')
-            const hasChangesRequested = Array.from(latestReviews.values()).some((state: string) => state === 'changes_requested')
-            
-            if (hasChangesRequested) {
-              reviewStatus = 'changes_requested'
-            } else if (hasApprovals) {
-              reviewStatus = 'approved'
-            } else {
-              reviewStatus = 'pending'
+            // Get requested reviewers
+            if (pr.requested_reviewers) {
+              requestedReviewers = pr.requested_reviewers.map((reviewer: any) => reviewer.login)
             }
             
-            // Get approved reviewers
-            approvedReviewers = Array.from(latestReviews.entries())
-              .filter(([_, state]) => state === 'approved')
-              .map(([reviewer, _]) => reviewer)
-          } else if (requestedReviewers.length > 0) {
-            reviewStatus = 'pending'
+            // Process review status
+            if (reviews.length > 0) {
+              const latestReviews = new Map()
+              reviews.forEach((review: any) => {
+                latestReviews.set(review.user.login, review.state)
+              })
+              
+              const hasApprovals = Array.from(latestReviews.values()).some((state: string) => state === 'approved')
+              const hasChangesRequested = Array.from(latestReviews.values()).some((state: string) => state === 'changes_requested')
+              
+              if (hasChangesRequested) {
+                reviewStatus = 'changes_requested'
+              } else if (hasApprovals) {
+                reviewStatus = 'approved'
+              } else {
+                reviewStatus = 'pending'
+              }
+              
+              // Get approved reviewers
+              approvedReviewers = Array.from(latestReviews.entries())
+                .filter(([_, state]) => state === 'approved')
+                .map(([reviewer, _]) => reviewer)
+            } else if (requestedReviewers.length > 0) {
+              reviewStatus = 'pending'
+            }
           }
+        } catch (error) {
+          console.error(`Error fetching reviews for PR #${pr.number}:`, error)
         }
-      } catch (error) {
-        console.error(`Error fetching reviews for PR #${pr.number}:`, error)
       }
       
       return {
         id: pr.id.toString(),
         title: pr.title,
         number: pr.number,
-        status: pr.merged_at ? 'merged' : pr.state,
+        status: prStatus,
         branch: pr.head.ref,
         url: pr.html_url,
         author: pr.user.login,
@@ -232,61 +239,22 @@ async function fetchPRsFromRepo(repoFullName: string): Promise<GitHubPR[]> {
 
 async function refreshActiveReposCache(): Promise<void> {
   try {
-    console.log('Scanning repositories to find those with linked PRs...')
-    const repos = await fetchUserRepositories()
-    const activeRepos: string[] = []
+    console.log('Using whitelisted repositories for PR scanning...')
     
-    // Sample a subset of repositories to find active ones
-    // Start with the most recently updated repositories
-    const recentRepos = repos.slice(0, 15) // Check top 50 most recent repos
+    // Whitelisted repositories that are known to have linked PRs
+    const whitelistedRepos = [
+      'tfso/apiworker-voucher',
+      'tfso/website-accounting', 
+      'tfso/react-layout-components'
+    ]
     
-    for (const repo of recentRepos) {
-      try {
-        const response = await fetch(
-          `https://api.github.com/repos/${repo.full_name}/pulls?state=all&per_page=15&sort=updated&direction=desc`,
-          {
-            headers: {
-              'Authorization': `token ${GITHUB_TOKEN}`,
-              'Accept': 'application/vnd.github.v3+json',
-            },
-          }
-        )
-        
-        if (response.ok) {
-          const prs = await response.json()
-          
-          // Check if any PR has a linked task key
-          const hasLinkedPRs = prs.some((pr: any) => {
-            const linkedTaskKey = extractTaskKeyFromBranch(pr.head.ref)
-            if (linkedTaskKey) {
-              console.log(`Found linked PR in ${repo.full_name}: branch "${pr.head.ref}" -> task "${linkedTaskKey}"`)
-            }
-            return linkedTaskKey !== undefined
-          })
-          
-          if (hasLinkedPRs) {
-            activeRepos.push(repo.full_name)
-            console.log(`Found active repository: ${repo.full_name}`)
-          }
-        }
-      } catch (error) {
-        console.error(`Error checking repository ${repo.full_name}:`, error)
-      }
-    }
+    console.log(`Scanning ${whitelistedRepos.length} whitelisted repositories:`, whitelistedRepos)
     
-    // Also include repositories from the previous cache if they exist
-    if (cachedActiveRepos.length > 0) {
-      cachedActiveRepos.forEach(repo => {
-        if (!activeRepos.includes(repo)) {
-          activeRepos.push(repo)
-        }
-      })
-    }
-    
-    cachedActiveRepos = activeRepos
+    // Set the active repos to the whitelisted ones
+    cachedActiveRepos = whitelistedRepos
     cachedActiveReposTimestamp = Date.now()
     
-    console.log(`Active repositories cache updated: ${activeRepos.length} repositories`)
+    console.log(`Active repositories cache updated: ${cachedActiveRepos.length} repositories`)
   } catch (error) {
     console.error('Error refreshing active repos cache:', error)
   }
@@ -311,9 +279,12 @@ function extractTaskKeyFromBranch(branchName: string): string | undefined {
   // Extract JIRA task key from branch name
   // Common patterns: feature/PROJ-123, bugfix/PROJ-456, etc.
   const patterns = [
-    /(?:feature|bugfix|hotfix|release)\/([A-Z]+-\d+)/i,
-    /([A-Z]+-\d+)/i, // Just the task key - case insensitive
-    /(?:ROC|PROJ|JIRA)-(\d+)/i, // Specific project patterns
+    // Pattern 1: feature/PROJ-123_something -> PROJ-123
+    /(?:feature|bugfix|hotfix|release)\/([A-Za-z]+-\d+)(?:_|$)/i,
+    // Pattern 2: Just the task key anywhere in the branch name
+    /([A-Za-z]+-\d+)(?:_|$)/i,
+    // Pattern 3: Specific project patterns with numbers only
+    /(?:ROC|PROJ|JIRA)-(\d+)/i,
   ]
   
   for (const pattern of patterns) {
@@ -347,7 +318,8 @@ export async function checkGitHubRateLimit(): Promise<{
   resetTime: Date | null
   isRateLimited: boolean
 }> {
-  if (!GITHUB_TOKEN) {
+    if (!GITHUB_TOKEN) {
+    console.warn('⚠️  No GitHub token configured')
     return { remaining: 0, limit: 0, resetTime: null, isRateLimited: true }
   }
 
@@ -359,29 +331,24 @@ export async function checkGitHubRateLimit(): Promise<{
       },
     })
 
-    if (response.ok) {
-      const data = await response.json()
-      const core = data.resources.core
-      const resetTime = new Date(core.reset * 1000)
-      const isRateLimited = core.remaining === 0
-      
-      // Debug logging
-      console.log('GitHub Rate Limit Check:', {
-        remaining: core.remaining,
-        limit: core.limit,
-        resetTime: resetTime.toISOString(),
-        isRateLimited,
-        currentTime: new Date().toISOString(),
-        timeUntilReset: Math.max(0, Math.ceil((resetTime.getTime() - Date.now()) / 60000)) + ' minutes'
-      })
-      
-      return {
-        remaining: core.remaining,
-        limit: core.limit,
-        resetTime,
-        isRateLimited
+          if (response.ok) {
+        const data = await response.json()
+        const core = data.resources.core
+        const resetTime = new Date(core.reset * 1000)
+        const isRateLimited = core.remaining === 0
+
+        // Additional debugging for rate limit issues
+        if (core.remaining < 10) {
+          console.warn(`⚠️  GitHub API rate limit is very low: ${core.remaining}/${core.limit} remaining`)
+        }
+
+        return {
+          remaining: core.remaining,
+          limit: core.limit,
+          resetTime,
+          isRateLimited
+        }
       }
-    }
     
     console.error('Failed to check rate limit:', response.status, response.statusText)
     return { remaining: 0, limit: 0, resetTime: null, isRateLimited: true }

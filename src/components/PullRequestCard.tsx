@@ -117,7 +117,7 @@ export function PullRequestCard({ pr }: PullRequestCardProps) {
               </button>
             </div>
             <Badge className={getStatusColor(pr.status)}>
-              #{pr.number} • {pr.isDraft ? 'Draft' : pr.status}
+              #{pr.number} • {pr.status === 'open' && pr.isDraft ? 'Draft' : pr.status}
             </Badge>
           </div>
           
@@ -134,8 +134,8 @@ export function PullRequestCard({ pr }: PullRequestCardProps) {
             </button>
           </div>
 
-          {/* Review Status - Only show if not merged */}
-          {pr.status !== 'merged' && (
+          {/* Review Status - Only show for open PRs */}
+          {pr.status === 'open' && (
             <div className="flex items-center gap-2">
               <Badge className={getReviewStatusColor(pr.reviewStatus)}>
                 <div className="flex items-center gap-1">
@@ -146,8 +146,8 @@ export function PullRequestCard({ pr }: PullRequestCardProps) {
             </div>
           )}
 
-          {/* Reviewers Information - Only show if not merged */}
-          {pr.status !== 'merged' && pr.requestedReviewers.length > 0 && (
+          {/* Reviewers Information - Only show for open PRs */}
+          {pr.status === 'open' && pr.requestedReviewers.length > 0 && (
             <div className="text-xs text-gray-600">
               <div className="flex items-center gap-1 mb-1">
                 <Clock className="h-3 w-3" />

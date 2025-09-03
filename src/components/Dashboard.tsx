@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { JiraTaskCard } from "@/components/JiraTaskCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { checkGitHubRateLimit } from "@/lib/githubService";
+
 
 import { TaskWithPRs } from "@/types";
 import {
@@ -36,10 +36,6 @@ export function Dashboard() {
         setLoading(true);
         setError(null);
 
-        // Check GitHub rate limit first
-        const rateLimit = await checkGitHubRateLimit();
-        setGithubRateLimit(rateLimit);
-
         const response = await fetch("/api/dashboard");
 
         if (!response.ok) {
@@ -54,6 +50,14 @@ export function Dashboard() {
 
         const fetchedTasks = data.tasks || [];
         setTasks(fetchedTasks);
+        
+        // Set rate limit status from API response (after all API calls)
+        if (data.rateLimit) {
+          setGithubRateLimit({
+            ...data.rateLimit,
+            resetTime: data.rateLimit.resetTime ? new Date(data.rateLimit.resetTime) : null
+          });
+        }
 
 
 
@@ -98,11 +102,6 @@ export function Dashboard() {
       setRefreshing(true);
       setError(null);
 
-      // Force a fresh rate limit check
-      console.log("Manually checking GitHub rate limit...");
-      const rateLimit = await checkGitHubRateLimit();
-      setGithubRateLimit(rateLimit);
-
       // Clear cache by adding a timestamp parameter
       const response = await fetch(`/api/dashboard?refresh=${Date.now()}`);
 
@@ -117,6 +116,14 @@ export function Dashboard() {
       }
 
       setTasks(data.tasks || []);
+      
+      // Set rate limit status from API response (after all API calls)
+      if (data.rateLimit) {
+        setGithubRateLimit({
+          ...data.rateLimit,
+          resetTime: data.rateLimit.resetTime ? new Date(data.rateLimit.resetTime) : null
+        });
+      }
     } catch (err) {
       setError("Failed to refresh data");
       console.error("Error refreshing dashboard data:", err);
