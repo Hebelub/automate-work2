@@ -298,7 +298,7 @@ function extractTaskKeyFromBranch(branchName: string): string | undefined {
         return result
       }
       console.log(`Extracted task key from branch "${branchName}": ${taskKey}`)
-      return taskKey
+      return taskKey.toUpperCase()
     }
   }
   

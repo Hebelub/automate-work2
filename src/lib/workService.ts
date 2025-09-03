@@ -60,7 +60,7 @@ export async function getTasksWithPRs(selectedRepo?: string): Promise<TaskWithPR
 
     // Combine tasks with their linked PRs
     const tasksWithPRs = jiraTasks.map(task => {
-      const linkedPRs = allPRs.filter(pr => pr.linkedTaskKey === task.key)
+      const linkedPRs = allPRs.filter(pr => pr.linkedTaskKey?.toLowerCase() === task.key.toLowerCase())
       if (linkedPRs.length > 0) {
         console.log(`Task ${task.key} has ${linkedPRs.length} linked PRs:`, linkedPRs.map(pr => `#${pr.number} (${pr.repository})`))
       }
