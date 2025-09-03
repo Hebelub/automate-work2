@@ -14,23 +14,14 @@ import {
   RefreshCw,
   AlertTriangle,
   Clock,
+  Search,
 } from "lucide-react";
 
 export function Dashboard() {
   const [tasks, setTasks] = useState<TaskWithPRs[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [statusFilters, setStatusFilters] = useState<Record<string, boolean>>({
-    Open: true,
-    "In Progress": true,
-    "On Hold": true,
-    QA: true,
-    "Ready for PROD": true,
-    Rejected: true,
-  });
-  const [issueTypeFilters, setIssueTypeFilters] = useState<
-    Record<string, boolean>
-  >({});
+  const [searchText, setSearchText] = useState<string>("");
   const [refreshing, setRefreshing] = useState(false);
   const [githubRateLimit, setGithubRateLimit] = useState<{
     remaining: number;
@@ -64,15 +55,7 @@ export function Dashboard() {
         const fetchedTasks = data.tasks || [];
         setTasks(fetchedTasks);
 
-        // Populate issue type filters dynamically
-        const uniqueIssueTypes = [
-          ...new Set(fetchedTasks.map((task: TaskWithPRs) => task.issueType)),
-        ] as string[];
-        const newIssueTypeFilters: Record<string, boolean> = {};
-        uniqueIssueTypes.forEach((issueType) => {
-          newIssueTypeFilters[issueType] = true;
-        });
-        setIssueTypeFilters(newIssueTypeFilters);
+
 
         // Debug: Log all unique status names to see what's actually coming from JIRA
         const actualStatuses = [
@@ -86,7 +69,7 @@ export function Dashboard() {
             status: task.status,
           }))
         );
-        console.log("Issue types found:", uniqueIssueTypes);
+        console.log("Issue types found:", [...new Set(fetchedTasks.map((task: TaskWithPRs) => task.issueType))]);
 
         // Debug: Log task descriptions
         console.log(
@@ -142,43 +125,48 @@ export function Dashboard() {
     }
   };
 
-  // Filter tasks based on current filters
-  const filteredTasks = tasks.filter((task) => {
-    // Status filter - only show tasks whose status is enabled
-    if (!statusFilters[task.status]) return false;
+  // Search function that searches across all task properties
+  const searchTasks = (tasks: TaskWithPRs[], searchText: string): TaskWithPRs[] => {
+    if (!searchText.trim()) return tasks;
+    
+    const searchLower = searchText.toLowerCase();
+    
+    return tasks.filter((task) => {
+      // Search in basic task properties
+      const basicMatch = 
+        task.key.toLowerCase().includes(searchLower) ||
+        task.name.toLowerCase().includes(searchLower) ||
+        task.status.toLowerCase().includes(searchLower) ||
+        task.issueType.toLowerCase().includes(searchLower) ||
+        task.assignee.toLowerCase().includes(searchLower) ||
+        task.priority.toLowerCase().includes(searchLower) ||
+        (task.description && task.description.toLowerCase().includes(searchLower));
+      
+      // Search in pull request properties
+      const prMatch = task.pullRequests.some((pr) =>
+        pr.title.toLowerCase().includes(searchLower) ||
+        pr.author.toLowerCase().includes(searchLower) ||
+        pr.branch.toLowerCase().includes(searchLower) ||
+        (pr.repository && pr.repository.toLowerCase().includes(searchLower)) ||
+        pr.status.toLowerCase().includes(searchLower) ||
+        pr.reviewStatus.toLowerCase().includes(searchLower) ||
+        pr.requestedReviewers.some(reviewer => reviewer.toLowerCase().includes(searchLower)) ||
+        pr.approvedReviewers.some(reviewer => reviewer.toLowerCase().includes(searchLower))
+      );
+      
+      return basicMatch || prMatch;
+    });
+  };
 
-    // Issue type filter - only show tasks whose issue type is enabled
-    if (!issueTypeFilters[task.issueType]) return false;
-
-    return true;
-  });
+  // Filter tasks based on search text
+  const filteredTasks = searchTasks(tasks, searchText);
 
   const totalPRs = tasks.reduce(
     (sum, task) => sum + task.pullRequests.length,
     0
   );
 
-  // Helper function to toggle status filter
-  const toggleStatusFilter = (status: string) => {
-    setStatusFilters((prev) => ({
-      ...prev,
-      [status]: !prev[status],
-    }));
-  };
 
-  // Helper function to toggle issue type filter
-  const toggleIssueTypeFilter = (issueType: string) => {
-    setIssueTypeFilters((prev) => ({
-      ...prev,
-      [issueType]: !prev[issueType],
-    }));
-  };
-
-  // Get status counts for display
-  const statusCounts = Object.keys(statusFilters).reduce((acc, status) => {
-    acc[status] = tasks.filter((task) => task.status === status).length;
-    return acc;
-  }, {} as Record<string, number>);
 
   if (loading) {
     return (
@@ -254,8 +242,6 @@ export function Dashboard() {
               </div>
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <span>{tasks.length} Total Tasks</span>
-                <span>•</span>
-                <span>{Object.keys(issueTypeFilters).length} Issue Types</span>
               </div>
               <Button
                 variant="outline"
@@ -274,56 +260,36 @@ export function Dashboard() {
         </div>
       </div>
 
-      {/* Status Filters */}
+      {/* Search Bar */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-700">Status:</span>
-            <div className="flex flex-wrap gap-1">
-              {Object.keys(statusFilters).map((status) => (
-                <Button
-                  key={status}
-                  variant={statusFilters[status] ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => toggleStatusFilter(status)}
-                  className="text-xs"
-                >
-                  {status} ({statusCounts[status] || 0})
-                </Button>
-              ))}
+          <div className="flex items-center gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search tasks, PRs, assignees, repositories, etc..."
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
             </div>
+            {searchText && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSearchText("")}
+                className="flex items-center gap-2"
+              >
+                Clear
+              </Button>
+            )}
           </div>
-        </div>
-      </div>
-
-      {/* Issue Type Filters */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-700">
-              Issue Type:
-            </span>
-            <div className="flex flex-wrap gap-1">
-              {Object.keys(issueTypeFilters).map((issueType) => {
-                const count = tasks.filter(
-                  (task) => task.issueType === issueType
-                ).length;
-                return (
-                  <Button
-                    key={issueType}
-                    variant={
-                      issueTypeFilters[issueType] ? "default" : "outline"
-                    }
-                    size="sm"
-                    onClick={() => toggleIssueTypeFilter(issueType)}
-                    className="text-xs"
-                  >
-                    {issueType} ({count})
-                  </Button>
-                );
-              })}
+          {searchText && (
+            <div className="mt-2 text-sm text-gray-600">
+              Showing {filteredTasks.length} of {tasks.length} tasks
             </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -340,10 +306,6 @@ export function Dashboard() {
           </div>
           <div className="flex items-center gap-4 text-sm text-gray-600">
             <span>Total PRs: {totalPRs}</span>
-            <span>
-              Issue Types:{" "}
-              {[...new Set(tasks.map((task) => task.issueType))].join(", ")}
-            </span>
           </div>
         </div>
 
@@ -359,7 +321,9 @@ export function Dashboard() {
             <div className="text-gray-500">
               <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p className="text-lg font-medium">No tasks found</p>
-              <p className="text-sm">Try adjusting your filters</p>
+              <p className="text-sm">
+                {searchText ? "Try adjusting your search terms" : "No tasks available"}
+              </p>
             </div>
           </div>
         )}
