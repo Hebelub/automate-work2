@@ -119,6 +119,10 @@ export async function fetchJiraTasks(): Promise<JiraTask[]> {
             priority: issue.fields?.priority?.name || 'Medium',
             description: extractFullDescription(issue.fields?.description),
             url: `https://${JIRA_DOMAIN}/browse/${issue.key || 'unknown'}`,
+            // Default metadata values - will be overridden in workService
+            parentTaskId: undefined,
+            notes: undefined,
+            hidden: false,
           }
         })
     } catch (error) {

@@ -16,6 +16,8 @@ import {
   Clock,
   Search,
 } from "lucide-react";
+import { useJiraMetadata } from "@/hooks/useJiraMetadata";
+import { clearAllMetadata } from "@/lib/jiraMetadataService";
 
 export function Dashboard() {
   const [tasks, setTasks] = useState<TaskWithPRs[]>([]);
@@ -29,6 +31,15 @@ export function Dashboard() {
     resetTime: Date | null;
     isRateLimited: boolean;
   } | null>(null);
+
+  // Use the metadata hook
+  const { updateMetadata, getRootTasksWithMetadata } = useJiraMetadata(tasks);
+
+  // Function to update task metadata
+  const updateTaskMetadata = (taskId: string, updates: Partial<{ parentTaskId?: string; notes?: string; hidden: boolean }>) => {
+    updateMetadata(taskId, updates);
+  };
+
 
   useEffect(() => {
     async function loadData() {
@@ -165,8 +176,9 @@ export function Dashboard() {
     });
   };
 
-  // Filter tasks based on search text
-  const filteredTasks = searchTasks(tasks, searchText);
+  // Get root tasks with metadata applied and filter
+  const rootTasksWithMetadata = getRootTasksWithMetadata();
+  const filteredTasks = searchTasks(rootTasksWithMetadata, searchText);
 
   const totalPRs = tasks.reduce(
     (sum, task) => sum + task.pullRequests.length,
@@ -253,6 +265,17 @@ export function Dashboard() {
               <Button
                 variant="outline"
                 size="sm"
+                onClick={() => {
+                  clearAllMetadata();
+                  window.location.reload();
+                }}
+                className="flex items-center gap-2 text-red-600 hover:text-red-700"
+              >
+                Clear Metadata
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={handleRefresh}
                 disabled={refreshing}
                 className="flex items-center gap-2"
@@ -316,11 +339,12 @@ export function Dashboard() {
           </div>
         </div>
 
+
         {/* Tasks Grid */}
         {filteredTasks.length > 0 ? (
           <div className="grid grid-cols-1 gap-6">
             {filteredTasks.map((task) => (
-              <JiraTaskCard key={task.id} task={task} />
+              <JiraTaskCard key={task.id} task={task} onUpdateMetadata={updateTaskMetadata} />
             ))}
           </div>
         ) : (
@@ -334,6 +358,7 @@ export function Dashboard() {
             </div>
           </div>
         )}
+
       </div>
     </div>
   );

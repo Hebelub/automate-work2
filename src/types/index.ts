@@ -9,6 +9,11 @@ export interface JiraTask {
   priority: string
   description: string
   url: string
+  // Local metadata
+  parentTaskId?: string
+  notes?: string
+  hidden: boolean
+  childTasks?: TaskWithPRs[]
 }
 
 export interface GitHubPR {

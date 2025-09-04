@@ -12,7 +12,10 @@ const mockJiraTasks: JiraTask[] = [
     assignee: "John Doe",
     priority: "High",
     description: "Create a comprehensive authentication system with JWT tokens and role-based access control.",
-    url: "https://jira.company.com/browse/PROJ-123"
+    url: "https://jira.company.com/browse/PROJ-123",
+    parentTaskId: undefined,
+    notes: undefined,
+    hidden: false,
   },
   {
     id: "2",
@@ -24,7 +27,10 @@ const mockJiraTasks: JiraTask[] = [
     assignee: "Jane Smith",
     priority: "Medium",
     description: "Create a responsive dashboard layout that works on all device sizes.",
-    url: "https://jira.company.com/browse/PROJ-124"
+    url: "https://jira.company.com/browse/PROJ-124",
+    parentTaskId: undefined,
+    notes: undefined,
+    hidden: false,
   },
   {
     id: "3",
@@ -36,7 +42,10 @@ const mockJiraTasks: JiraTask[] = [
     assignee: "Mike Johnson",
     priority: "Critical",
     description: "Address the SQL injection vulnerability in the user input validation.",
-    url: "https://jira.company.com/browse/PROJ-125"
+    url: "https://jira.company.com/browse/PROJ-125",
+    parentTaskId: undefined,
+    notes: undefined,
+    hidden: false,
   },
   {
     id: "4",
@@ -48,7 +57,10 @@ const mockJiraTasks: JiraTask[] = [
     assignee: "Sarah Wilson",
     priority: "Low",
     description: "Implement comprehensive unit tests for all API endpoints.",
-    url: "https://jira.company.com/browse/PROJ-126"
+    url: "https://jira.company.com/browse/PROJ-126",
+    parentTaskId: undefined,
+    notes: undefined,
+    hidden: false,
   },
   {
     id: "5",
@@ -60,7 +72,10 @@ const mockJiraTasks: JiraTask[] = [
     assignee: "Alex Brown",
     priority: "High",
     description: "Optimize slow database queries to improve application performance.",
-    url: "https://jira.company.com/browse/PROJ-127"
+    url: "https://jira.company.com/browse/PROJ-127",
+    parentTaskId: undefined,
+    notes: undefined,
+    hidden: false,
   }
 ]
 

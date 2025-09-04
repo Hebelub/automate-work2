@@ -2,15 +2,23 @@ import { TaskWithPRs } from "@/types"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PullRequestCard } from "@/components/PullRequestCard"
-import { ExternalLink, Clock, User, AlertTriangle, Copy, Check } from "lucide-react"
-import { useState } from "react"
+import { ExternalLink, Clock, User, AlertTriangle, Copy, Check, Eye, EyeOff, X, Globe, Link, FileText } from "lucide-react"
+import { useState, useRef, useEffect } from "react"
+import { toggleTaskHidden, setTaskNotes, setTaskParent, wouldCreateLoop } from "@/lib/jiraMetadataService"
 
 interface JiraTaskCardProps {
   task: TaskWithPRs
+  onUpdateMetadata: (taskId: string, updates: Partial<{ parentTaskId?: string; notes?: string; hidden: boolean }>) => void
 }
 
-export function JiraTaskCard({ task }: JiraTaskCardProps) {
+export function JiraTaskCard({ task, onUpdateMetadata }: JiraTaskCardProps) {
   const [copiedTaskKey, setCopiedTaskKey] = useState(false)
+  const [notes, setNotes] = useState(task.notes || '')
+  const [isDragging, setIsDragging] = useState(false)
+  const [isDragOver, setIsDragOver] = useState(false)
+  const [isAddingNotes, setIsAddingNotes] = useState(false)
+  const cardRef = useRef<HTMLDivElement>(null)
+  const notesRef = useRef<HTMLTextAreaElement>(null)
 
   const handleCopyTaskKey = () => {
     navigator.clipboard.writeText(task.key).then(() => {
@@ -19,6 +27,84 @@ export function JiraTaskCard({ task }: JiraTaskCardProps) {
     }).catch(() => {
       // Handle error if copying fails
     })
+  }
+
+  const handleToggleHidden = () => {
+    const newHidden = !task.hidden
+    toggleTaskHidden(task.id)
+    onUpdateMetadata(task.id, { hidden: newHidden })
+  }
+
+  const handleNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newNotes = e.target.value
+    setNotes(newNotes)
+    setTaskNotes(task.id, newNotes)
+    onUpdateMetadata(task.id, { notes: newNotes })
+    
+    // Auto-resize textarea
+    if (notesRef.current) {
+      notesRef.current.style.height = 'auto'
+      notesRef.current.style.height = notesRef.current.scrollHeight + 'px'
+    }
+  }
+
+  const handleAddNotes = () => {
+    setIsAddingNotes(true)
+    // Focus the textarea after it's rendered
+    setTimeout(() => {
+      if (notesRef.current) {
+        notesRef.current.focus()
+      }
+    }, 0)
+  }
+
+  // Auto-resize textarea on mount and when notes change
+  useEffect(() => {
+    if (notesRef.current && notes) {
+      notesRef.current.style.height = 'auto'
+      notesRef.current.style.height = notesRef.current.scrollHeight + 'px'
+    }
+  }, [notes])
+
+  const handleDragStart = (e: React.DragEvent) => {
+    e.dataTransfer.setData('text/plain', task.id)
+    setIsDragging(true)
+  }
+
+  const handleDragEnd = () => {
+    setIsDragging(false)
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragOver(true)
+  }
+
+  const handleDragLeave = () => {
+    setIsDragOver(false)
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragOver(false)
+    
+    const draggedTaskId = e.dataTransfer.getData('text/plain')
+    if (draggedTaskId && draggedTaskId !== task.id) {
+      // Check if this would create a loop
+      if (wouldCreateLoop(draggedTaskId, task.id)) {
+        console.warn('Cannot set parent: would create a loop')
+        return
+      }
+      
+      setTaskParent(draggedTaskId, task.id)
+      // Update the dragged task's parent in the UI
+      onUpdateMetadata(draggedTaskId, { parentTaskId: task.id })
+    }
+  }
+
+  const handleRemoveParent = () => {
+    setTaskParent(task.id, undefined)
+    onUpdateMetadata(task.id, { parentTaskId: undefined })
   }
 
   const getStatusColor = (status: TaskWithPRs['status']) => {
@@ -72,8 +158,37 @@ export function JiraTaskCard({ task }: JiraTaskCardProps) {
     }
   }
 
+  // If task is hidden, show compact version
+  if (task.hidden) {
+    return (
+      <div className="flex items-center gap-2 p-2 bg-gray-50 rounded border text-sm">
+        <button
+          onClick={handleToggleHidden}
+          className="text-gray-500 hover:text-gray-700 transition-colors"
+          title="Show task"
+        >
+          <Eye className="h-4 w-4" />
+        </button>
+        <span className="font-mono text-gray-600">{task.key}</span>
+        <span className="text-gray-800 truncate">{task.name}</span>
+        <Badge className={getStatusColor(task.status)}>
+          {task.status}
+        </Badge>
+      </div>
+    )
+  }
+
   return (
-    <Card className="hover:shadow-lg transition-shadow">
+    <Card 
+      ref={cardRef}
+      className={`hover:shadow-lg transition-shadow ${isDragging ? 'opacity-50' : ''} ${isDragOver ? 'ring-2 ring-blue-500' : ''}`}
+      draggable
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       <CardHeader className="pb-4">
         <div className="flex items-start justify-between">
           <div className="flex-1">
@@ -111,34 +226,97 @@ export function JiraTaskCard({ task }: JiraTaskCardProps) {
             </CardTitle>
           </div>
           
-          <a
-            href={task.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-gray-500 hover:text-gray-700 transition-colors"
-          >
-            <ExternalLink className="h-4 w-4" />
-          </a>
+          <div className="flex items-center gap-2">
+            {/* Detach Parent Button - only show if task has a parent */}
+            {task.parentTaskId && (
+              <button
+                onClick={handleRemoveParent}
+                className="text-red-500 hover:text-red-700 transition-colors"
+                title="Detach from parent"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+            
+            {/* Add Notes Button - only show if no notes */}
+            {!notes && !isAddingNotes && (
+              <button
+                onClick={handleAddNotes}
+                className="text-gray-500 hover:text-gray-700 transition-colors"
+                title="Add notes"
+              >
+                <FileText className="h-4 w-4" />
+              </button>
+            )}
+            
+            {/* Hide/Show Button */}
+            <button
+              onClick={handleToggleHidden}
+              className="text-gray-500 hover:text-gray-700 transition-colors"
+              title="Hide task"
+            >
+              <EyeOff className="h-4 w-4" />
+            </button>
+            
+            {/* External Link */}
+            <a
+              href={task.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              <ExternalLink className="h-4 w-4" />
+            </a>
+          </div>
         </div>
       </CardHeader>
       
       <CardContent className="pt-0">
         <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <h4 className="text-sm font-medium text-gray-900">Pull Requests</h4>
-            {task.pullRequests.length === 0 && (
-              <Badge variant="outline" className="text-xs">
-                No PRs
-              </Badge>
-            )}
-          </div>
-          
-          {task.pullRequests.length > 0 && (
-            <div className="space-y-2">
-              {task.pullRequests.map((pr) => (
-                <PullRequestCard key={pr.id} pr={pr} />
-              ))}
+
+          {/* Notes Section - only show if there are notes or we're adding */}
+          {(notes || isAddingNotes) && (
+            <div>
+              <textarea
+                ref={notesRef}
+                value={notes}
+                onChange={handleNotesChange}
+                className="w-full p-2 text-sm resize-none border-none bg-transparent focus:outline-none focus:ring-0 placeholder-gray-400"
+                placeholder="Add your notes here..."
+                style={{ minHeight: '1.5rem', height: 'auto' }}
+                onBlur={() => {
+                  if (!notes.trim()) {
+                    setIsAddingNotes(false)
+                  }
+                }}
+              />
             </div>
+          )}
+
+          {/* Child Tasks */}
+          {task.childTasks && task.childTasks.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-gray-900">Child Tasks:</h4>
+              <div className="space-y-1">
+                {task.childTasks.map((childTask) => (
+                  <JiraTaskCard key={childTask.id} task={childTask} onUpdateMetadata={onUpdateMetadata} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {task.pullRequests.length > 0 && (
+            <>
+              <div className="flex items-center gap-2">
+                <h4 className="text-sm font-medium text-gray-900">Pull Requests</h4>
+              </div>
+              
+              <div className="space-y-2">
+                {task.pullRequests.map((pr) => (
+                  <PullRequestCard key={pr.id} pr={pr} />
+                ))}
+              </div>
+            </>
           )}
         </div>
       </CardContent>

@@ -1,6 +1,7 @@
 import { TaskWithPRs, JiraTask, GitHubPR } from "@/types"
 import { fetchJiraTasks } from "./jiraService"
 import { fetchPullRequests, clearActiveReposCache, checkGitHubRateLimit } from "./githubService"
+import { getJiraTaskMetadata, getChildTasks } from "./jiraMetadataService"
 
 // Cache for PRs to avoid refetching
 let cachedPRs: GitHubPR[] = []
@@ -58,16 +59,33 @@ export async function getTasksWithPRs(selectedRepo?: string): Promise<TaskWithPR
 
     console.log(`Fetched ${jiraTasks.length} JIRA tasks and using ${allPRs.length} PRs`)
 
-    // Combine tasks with their linked PRs
+    // Combine tasks with their linked PRs and metadata
     const tasksWithPRs = jiraTasks.map(task => {
       const linkedPRs = allPRs.filter(pr => pr.linkedTaskKey?.toLowerCase() === task.key.toLowerCase())
       if (linkedPRs.length > 0) {
         console.log(`Task ${task.key} has ${linkedPRs.length} linked PRs:`, linkedPRs.map(pr => `#${pr.number} (${pr.repository})`))
       }
       
+      // Get metadata for this task
+      const metadata = getJiraTaskMetadata(task.id)
+      
+      // Get child tasks
+      const childTaskIds = getChildTasks(task.id)
+      const childTasks = jiraTasks.filter(childTask => childTaskIds.includes(childTask.id)).map(childTask => {
+        const childLinkedPRs = allPRs.filter(pr => pr.linkedTaskKey?.toLowerCase() === childTask.key.toLowerCase())
+        const childMetadata = getJiraTaskMetadata(childTask.id)
+        return {
+          ...childTask,
+          ...childMetadata,
+          pullRequests: childLinkedPRs
+        }
+      })
+      
       return {
         ...task,
-        pullRequests: linkedPRs
+        ...metadata,
+        pullRequests: linkedPRs,
+        childTasks: childTasks.length > 0 ? childTasks : undefined
       }
     })
 
