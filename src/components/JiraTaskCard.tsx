@@ -2,7 +2,7 @@ import { TaskWithPRs } from "@/types"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PullRequestCard } from "@/components/PullRequestCard"
-import { ExternalLink, Clock, User, AlertTriangle, Copy, Check, Eye, EyeOff, X, Globe, Link, FileText } from "lucide-react"
+import { ExternalLink, Clock, User, AlertTriangle, Copy, Check, Eye, EyeOff, X, Globe, Link, FileText, GripVertical } from "lucide-react"
 import { useState, useRef, useEffect } from "react"
 import { toggleTaskHidden, setTaskNotes, setTaskParent, wouldCreateLoop } from "@/lib/jiraMetadataService"
 
@@ -182,9 +182,6 @@ export function JiraTaskCard({ task, onUpdateMetadata }: JiraTaskCardProps) {
     <Card 
       ref={cardRef}
       className={`hover:shadow-lg transition-shadow ${isDragging ? 'opacity-50' : ''} ${isDragOver ? 'ring-2 ring-blue-500' : ''}`}
-      draggable
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -227,6 +224,17 @@ export function JiraTaskCard({ task, onUpdateMetadata }: JiraTaskCardProps) {
           </div>
           
           <div className="flex items-center gap-2">
+            {/* Drag Handle */}
+            <div
+              className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 transition-colors"
+              draggable
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+              title="Drag to move or set parent"
+            >
+              <GripVertical className="h-4 w-4" />
+            </div>
+            
             {/* Detach Parent Button - only show if task has a parent */}
             {task.parentTaskId && (
               <button

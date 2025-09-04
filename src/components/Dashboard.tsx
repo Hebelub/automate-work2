@@ -17,7 +17,6 @@ import {
   Search,
 } from "lucide-react";
 import { useJiraMetadata } from "@/hooks/useJiraMetadata";
-import { clearAllMetadata } from "@/lib/jiraMetadataService";
 
 export function Dashboard() {
   const [tasks, setTasks] = useState<TaskWithPRs[]>([]);
@@ -262,17 +261,6 @@ export function Dashboard() {
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <span>{tasks.length} Total Tasks</span>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  clearAllMetadata();
-                  window.location.reload();
-                }}
-                className="flex items-center gap-2 text-red-600 hover:text-red-700"
-              >
-                Clear Metadata
-              </Button>
               <Button
                 variant="outline"
                 size="sm"
