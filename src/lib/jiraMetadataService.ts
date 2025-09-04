@@ -126,12 +126,18 @@ export function toggleChildTasksExpanded(taskId: string): void {
   
   try {
     const metadata = getAllJiraMetadata()
-    const currentMetadata = metadata[taskId] || { id: taskId, hidden: false, childTasksExpanded: true, pullRequestsExpanded: true }
+    const currentMetadata = metadata[taskId] || { 
+      id: taskId, 
+      hidden: false, 
+      childTasksExpanded: true, 
+      pullRequestsExpanded: true 
+    }
     const newExpanded = !currentMetadata.childTasksExpanded
     
     metadata[taskId] = {
       ...currentMetadata,
       childTasksExpanded: newExpanded
+      // Note: We don't touch pullRequestsExpanded here - it stays as it was
     }
     
     localStorage.setItem(STORAGE_KEY, JSON.stringify(metadata))
@@ -148,12 +154,18 @@ export function togglePullRequestsExpanded(taskId: string): void {
   
   try {
     const metadata = getAllJiraMetadata()
-    const currentMetadata = metadata[taskId] || { id: taskId, hidden: false, childTasksExpanded: true, pullRequestsExpanded: true }
+    const currentMetadata = metadata[taskId] || { 
+      id: taskId, 
+      hidden: false, 
+      childTasksExpanded: true, 
+      pullRequestsExpanded: true 
+    }
     const newExpanded = !currentMetadata.pullRequestsExpanded
     
     metadata[taskId] = {
       ...currentMetadata,
       pullRequestsExpanded: newExpanded
+      // Note: We don't touch childTasksExpanded here - it stays as it was
     }
     
     localStorage.setItem(STORAGE_KEY, JSON.stringify(metadata))

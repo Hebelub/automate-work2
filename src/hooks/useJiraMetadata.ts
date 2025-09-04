@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { JiraTaskMetadata, getAllJiraMetadata } from '@/lib/jiraMetadataService'
+import { JiraTaskMetadata, getAllJiraMetadata, updateJiraTaskMetadata } from '@/lib/jiraMetadataService'
 import { TaskWithPRs } from '@/types'
 
 export function useJiraMetadata(tasks: TaskWithPRs[]) {
@@ -13,15 +13,22 @@ export function useJiraMetadata(tasks: TaskWithPRs[]) {
 
   // Function to update metadata
   const updateMetadata = (taskId: string, updates: Partial<JiraTaskMetadata>) => {
+    // Save to localStorage first
+    updateJiraTaskMetadata(taskId, updates)
+    
+    // Then update React state
     setMetadata(prev => {
+      const existingMetadata = prev[taskId] || {
+        id: taskId,
+        hidden: false,
+        childTasksExpanded: true,
+        pullRequestsExpanded: true
+      }
+      
       const updated = {
         ...prev,
         [taskId]: {
-          ...prev[taskId],
-          id: taskId,
-          hidden: false,
-          childTasksExpanded: true,
-          pullRequestsExpanded: true,
+          ...existingMetadata,
           ...updates
         }
       }

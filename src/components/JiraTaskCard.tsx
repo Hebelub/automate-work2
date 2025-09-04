@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PullRequestCard } from "@/components/PullRequestCard"
 import { ExternalLink, Clock, User, AlertTriangle, Copy, Check, Eye, EyeOff, X, Globe, Link, FileText, GripVertical, ChevronDown, ChevronRight } from "lucide-react"
 import { useState, useRef, useEffect } from "react"
-import { toggleTaskHidden, setTaskNotes, setTaskParent, wouldCreateLoop, toggleChildTasksExpanded, togglePullRequestsExpanded } from "@/lib/jiraMetadataService"
+import { toggleTaskHidden, setTaskNotes, setTaskParent, wouldCreateLoop } from "@/lib/jiraMetadataService"
 
 interface JiraTaskCardProps {
   task: TaskWithPRs
@@ -59,12 +59,10 @@ export function JiraTaskCard({ task, onUpdateMetadata }: JiraTaskCardProps) {
   }
 
   const handleToggleChildTasks = () => {
-    toggleChildTasksExpanded(task.id)
     onUpdateMetadata(task.id, { childTasksExpanded: !task.childTasksExpanded })
   }
 
   const handleTogglePullRequests = () => {
-    togglePullRequestsExpanded(task.id)
     onUpdateMetadata(task.id, { pullRequestsExpanded: !task.pullRequestsExpanded })
   }
 
