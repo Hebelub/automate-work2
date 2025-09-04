@@ -97,9 +97,8 @@ export async function fetchJiraTasks(): Promise<JiraTask[]> {
       
       return allIssues
         .filter((issue: any) => {
-          // Filter out subtasks - they have a parent field or are of subtask type
-          const isSubtask = issue.fields?.parent || 
-                           issue.fields?.issuetype?.name?.toLowerCase() === 'subtask' ||
+          // Filter out only actual subtasks, not tasks that are part of an epic
+          const isSubtask = issue.fields?.issuetype?.name?.toLowerCase() === 'subtask' ||
                            issue.fields?.issuetype?.subtask === true
           return !isSubtask
         })
