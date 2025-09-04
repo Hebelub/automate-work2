@@ -50,6 +50,12 @@ export function useJiraMetadata(tasks: TaskWithPRs[]) {
             ...childMetadata
           }
         })
+        .sort((a, b) => {
+          // Sort so hidden child tasks appear at the bottom
+          if (a.hidden && !b.hidden) return 1
+          if (!a.hidden && b.hidden) return -1
+          return 0
+        })
 
       return {
         ...task,
@@ -64,9 +70,22 @@ export function useJiraMetadata(tasks: TaskWithPRs[]) {
     const allTasksWithMetadata = getTasksWithMetadata()
     
     // Filter out tasks that have a parent (child tasks)
-    return allTasksWithMetadata.filter(task => {
+    const rootTasks = allTasksWithMetadata.filter(task => {
       const taskMetadata = metadata[task.id] || { id: task.id, hidden: false }
       return !taskMetadata.parentTaskId
+    })
+    
+    // Sort so hidden tasks appear at the bottom
+    return rootTasks.sort((a, b) => {
+      const aMetadata = metadata[a.id] || { id: a.id, hidden: false }
+      const bMetadata = metadata[b.id] || { id: b.id, hidden: false }
+      
+      // If one is hidden and the other isn't, hidden goes to bottom
+      if (aMetadata.hidden && !bMetadata.hidden) return 1
+      if (!aMetadata.hidden && bMetadata.hidden) return -1
+      
+      // If both have same hidden status, maintain original order
+      return 0
     })
   }
 
