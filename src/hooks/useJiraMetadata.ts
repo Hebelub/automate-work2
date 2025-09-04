@@ -19,6 +19,9 @@ export function useJiraMetadata(tasks: TaskWithPRs[]) {
         [taskId]: {
           ...prev[taskId],
           id: taskId,
+          hidden: false,
+          childTasksExpanded: true,
+          pullRequestsExpanded: true,
           ...updates
         }
       }
@@ -31,7 +34,9 @@ export function useJiraMetadata(tasks: TaskWithPRs[]) {
     return tasks.map(task => {
       const taskMetadata = metadata[task.id] || {
         id: task.id,
-        hidden: false
+        hidden: false,
+        childTasksExpanded: true,
+        pullRequestsExpanded: true
       }
       
       // Get child tasks by filtering all tasks that have this task as their parent
@@ -43,7 +48,9 @@ export function useJiraMetadata(tasks: TaskWithPRs[]) {
         .map(childTask => {
           const childMetadata = metadata[childTask.id] || {
             id: childTask.id,
-            hidden: false
+            hidden: false,
+            childTasksExpanded: true,
+            pullRequestsExpanded: true
           }
           return {
             ...childTask,
@@ -71,7 +78,7 @@ export function useJiraMetadata(tasks: TaskWithPRs[]) {
     
     // Filter out tasks that have a parent (child tasks)
     const rootTasks = allTasksWithMetadata.filter(task => {
-      const taskMetadata = metadata[task.id] || { id: task.id, hidden: false }
+      const taskMetadata = metadata[task.id] || { id: task.id, hidden: false, childTasksExpanded: true, pullRequestsExpanded: true }
       return !taskMetadata.parentTaskId
     })
     

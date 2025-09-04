@@ -123,6 +123,8 @@ export async function fetchJiraTasks(): Promise<JiraTask[]> {
             parentTaskId: undefined,
             notes: undefined,
             hidden: false,
+            childTasksExpanded: true,
+            pullRequestsExpanded: true,
           }
         })
     } catch (error) {

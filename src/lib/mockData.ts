@@ -16,6 +16,8 @@ const mockJiraTasks: JiraTask[] = [
     parentTaskId: undefined,
     notes: undefined,
     hidden: false,
+    childTasksExpanded: true,
+    pullRequestsExpanded: true,
   },
   {
     id: "2",
@@ -31,6 +33,8 @@ const mockJiraTasks: JiraTask[] = [
     parentTaskId: undefined,
     notes: undefined,
     hidden: false,
+    childTasksExpanded: true,
+    pullRequestsExpanded: true,
   },
   {
     id: "3",
@@ -46,6 +50,8 @@ const mockJiraTasks: JiraTask[] = [
     parentTaskId: undefined,
     notes: undefined,
     hidden: false,
+    childTasksExpanded: true,
+    pullRequestsExpanded: true,
   },
   {
     id: "4",
@@ -61,6 +67,8 @@ const mockJiraTasks: JiraTask[] = [
     parentTaskId: undefined,
     notes: undefined,
     hidden: false,
+    childTasksExpanded: true,
+    pullRequestsExpanded: true,
   },
   {
     id: "5",
@@ -76,6 +84,8 @@ const mockJiraTasks: JiraTask[] = [
     parentTaskId: undefined,
     notes: undefined,
     hidden: false,
+    childTasksExpanded: true,
+    pullRequestsExpanded: true,
   }
 ]
 

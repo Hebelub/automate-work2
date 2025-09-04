@@ -35,7 +35,7 @@ export function Dashboard() {
   const { updateMetadata, getRootTasksWithMetadata } = useJiraMetadata(tasks);
 
   // Function to update task metadata
-  const updateTaskMetadata = (taskId: string, updates: Partial<{ parentTaskId?: string; notes?: string; hidden: boolean }>) => {
+  const updateTaskMetadata = (taskId: string, updates: Partial<{ parentTaskId?: string; notes?: string; hidden: boolean; childTasksExpanded?: boolean; pullRequestsExpanded?: boolean }>) => {
     updateMetadata(taskId, updates);
   };
 

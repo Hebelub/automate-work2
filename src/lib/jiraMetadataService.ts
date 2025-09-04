@@ -3,6 +3,8 @@ export interface JiraTaskMetadata {
   parentTaskId?: string
   notes?: string
   hidden: boolean
+  childTasksExpanded?: boolean
+  pullRequestsExpanded?: boolean
 }
 
 const STORAGE_KEY = 'jira-task-metadata'
@@ -114,6 +116,50 @@ export function wouldCreateLoop(taskId: string, newParentId: string): boolean {
   }
   
   return false
+}
+
+// Toggle child tasks section expanded state
+export function toggleChildTasksExpanded(taskId: string): void {
+  if (typeof window === 'undefined') {
+    return
+  }
+  
+  try {
+    const metadata = getAllJiraMetadata()
+    const currentMetadata = metadata[taskId] || { id: taskId, hidden: false, childTasksExpanded: true, pullRequestsExpanded: true }
+    const newExpanded = !currentMetadata.childTasksExpanded
+    
+    metadata[taskId] = {
+      ...currentMetadata,
+      childTasksExpanded: newExpanded
+    }
+    
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(metadata))
+  } catch (error) {
+    console.error('Error toggling child tasks expanded state:', error)
+  }
+}
+
+// Toggle pull requests section expanded state
+export function togglePullRequestsExpanded(taskId: string): void {
+  if (typeof window === 'undefined') {
+    return
+  }
+  
+  try {
+    const metadata = getAllJiraMetadata()
+    const currentMetadata = metadata[taskId] || { id: taskId, hidden: false, childTasksExpanded: true, pullRequestsExpanded: true }
+    const newExpanded = !currentMetadata.pullRequestsExpanded
+    
+    metadata[taskId] = {
+      ...currentMetadata,
+      pullRequestsExpanded: newExpanded
+    }
+    
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(metadata))
+  } catch (error) {
+    console.error('Error toggling pull requests expanded state:', error)
+  }
 }
 
 // Clear all metadata (for debugging)

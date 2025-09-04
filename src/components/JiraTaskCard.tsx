@@ -2,13 +2,13 @@ import { TaskWithPRs } from "@/types"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PullRequestCard } from "@/components/PullRequestCard"
-import { ExternalLink, Clock, User, AlertTriangle, Copy, Check, Eye, EyeOff, X, Globe, Link, FileText, GripVertical } from "lucide-react"
+import { ExternalLink, Clock, User, AlertTriangle, Copy, Check, Eye, EyeOff, X, Globe, Link, FileText, GripVertical, ChevronDown, ChevronRight } from "lucide-react"
 import { useState, useRef, useEffect } from "react"
-import { toggleTaskHidden, setTaskNotes, setTaskParent, wouldCreateLoop } from "@/lib/jiraMetadataService"
+import { toggleTaskHidden, setTaskNotes, setTaskParent, wouldCreateLoop, toggleChildTasksExpanded, togglePullRequestsExpanded } from "@/lib/jiraMetadataService"
 
 interface JiraTaskCardProps {
   task: TaskWithPRs
-  onUpdateMetadata: (taskId: string, updates: Partial<{ parentTaskId?: string; notes?: string; hidden: boolean }>) => void
+  onUpdateMetadata: (taskId: string, updates: Partial<{ parentTaskId?: string; notes?: string; hidden: boolean; childTasksExpanded?: boolean; pullRequestsExpanded?: boolean }>) => void
 }
 
 export function JiraTaskCard({ task, onUpdateMetadata }: JiraTaskCardProps) {
@@ -56,6 +56,16 @@ export function JiraTaskCard({ task, onUpdateMetadata }: JiraTaskCardProps) {
         notesRef.current.focus()
       }
     }, 0)
+  }
+
+  const handleToggleChildTasks = () => {
+    toggleChildTasksExpanded(task.id)
+    onUpdateMetadata(task.id, { childTasksExpanded: !task.childTasksExpanded })
+  }
+
+  const handleTogglePullRequests = () => {
+    togglePullRequestsExpanded(task.id)
+    onUpdateMetadata(task.id, { pullRequestsExpanded: !task.pullRequestsExpanded })
   }
 
   // Auto-resize textarea on mount and when notes change
@@ -304,27 +314,49 @@ export function JiraTaskCard({ task, onUpdateMetadata }: JiraTaskCardProps) {
           {/* Child Tasks */}
           {task.childTasks && task.childTasks.length > 0 && (
             <div className="space-y-2">
-              <h4 className="text-sm font-medium text-gray-900">Child Tasks:</h4>
-              <div className="space-y-1">
-                {task.childTasks.map((childTask) => (
-                  <JiraTaskCard key={childTask.id} task={childTask} onUpdateMetadata={onUpdateMetadata} />
-                ))}
-              </div>
+              <button
+                onClick={handleToggleChildTasks}
+                className="flex items-center gap-2 text-sm font-medium text-gray-900 hover:text-gray-700 transition-colors"
+              >
+                {task.childTasksExpanded ? (
+                  <ChevronDown className="h-4 w-4" />
+                ) : (
+                  <ChevronRight className="h-4 w-4" />
+                )}
+                Child Tasks ({task.childTasks.length})
+              </button>
+              {task.childTasksExpanded && (
+                <div className="space-y-1">
+                  {task.childTasks.map((childTask) => (
+                    <JiraTaskCard key={childTask.id} task={childTask} onUpdateMetadata={onUpdateMetadata} />
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
           {task.pullRequests.length > 0 && (
-            <>
-              <div className="flex items-center gap-2">
-                <h4 className="text-sm font-medium text-gray-900">Pull Requests</h4>
-              </div>
+            <div className="space-y-2">
+              <button
+                onClick={handleTogglePullRequests}
+                className="flex items-center gap-2 text-sm font-medium text-gray-900 hover:text-gray-700 transition-colors"
+              >
+                {task.pullRequestsExpanded ? (
+                  <ChevronDown className="h-4 w-4" />
+                ) : (
+                  <ChevronRight className="h-4 w-4" />
+                )}
+                Pull Requests ({task.pullRequests.length})
+              </button>
               
-              <div className="space-y-2">
-                {task.pullRequests.map((pr) => (
-                  <PullRequestCard key={pr.id} pr={pr} />
-                ))}
-              </div>
-            </>
+              {task.pullRequestsExpanded && (
+                <div className="space-y-2">
+                  {task.pullRequests.map((pr) => (
+                    <PullRequestCard key={pr.id} pr={pr} />
+                  ))}
+                </div>
+              )}
+            </div>
           )}
         </div>
       </CardContent>

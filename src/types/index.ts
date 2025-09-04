@@ -13,6 +13,8 @@ export interface JiraTask {
   parentTaskId?: string
   notes?: string
   hidden: boolean
+  childTasksExpanded?: boolean
+  pullRequestsExpanded?: boolean
   childTasks?: TaskWithPRs[]
 }
 
