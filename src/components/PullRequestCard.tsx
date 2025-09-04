@@ -1,16 +1,22 @@
 import { GitHubPR } from "@/types"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ExternalLink, GitBranch, User, GitPullRequest, CheckCircle, Clock, AlertCircle, Users, Copy, Check } from "lucide-react"
+import { ExternalLink, GitBranch, User, GitPullRequest, CheckCircle, Clock, AlertCircle, Users, Copy, Check, Eye, EyeOff } from "lucide-react"
 import { useState } from "react"
+import { PullRequestMetadata } from "@/lib/jiraMetadataService"
 
 interface PullRequestCardProps {
-  pr: GitHubPR
+  pr: GitHubPR & PullRequestMetadata
+  onUpdateMetadata: (prId: string, updates: Partial<PullRequestMetadata>) => void
 }
 
-export function PullRequestCard({ pr }: PullRequestCardProps) {
+export function PullRequestCard({ pr, onUpdateMetadata }: PullRequestCardProps) {
   const [copiedRepo, setCopiedRepo] = useState(false)
   const [copiedBranch, setCopiedBranch] = useState(false)
+
+  const handleToggleHidden = () => {
+    onUpdateMetadata(pr.id, { hidden: !pr.hidden })
+  }
 
   const handleCopyRepo = async () => {
     await navigator.clipboard.writeText(pr.repository || '')
@@ -84,6 +90,35 @@ export function PullRequestCard({ pr }: PullRequestCardProps) {
     }
   }
 
+  // If PR is hidden, show compact version
+  if (pr.hidden) {
+    return (
+      <div className="flex items-center gap-2 p-2 bg-gray-50 rounded border text-sm">
+        <button
+          onClick={handleToggleHidden}
+          className="text-gray-500 hover:text-gray-700 transition-colors"
+          title="Show PR details"
+        >
+          <Eye className="h-4 w-4" />
+        </button>
+        <GitPullRequest className="h-3 w-3 text-gray-500" />
+        <span className="font-mono text-gray-600">{pr.repository}</span>
+        <span className="text-gray-800 truncate">{pr.branch}</span>
+        <Badge variant="outline" className={`text-xs ${getStatusColor(pr.status)}`}>
+          {pr.status}
+        </Badge>
+        <a
+          href={pr.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-gray-500 hover:text-gray-700 transition-colors ml-auto"
+        >
+          <ExternalLink className="h-3 w-3" />
+        </a>
+      </div>
+    )
+  }
+
   return (
     <Card className="hover:shadow-md transition-shadow">
       <CardHeader className="pb-3">
@@ -91,14 +126,23 @@ export function PullRequestCard({ pr }: PullRequestCardProps) {
           <CardTitle className="text-sm font-medium line-clamp-2">
             {pr.title}
           </CardTitle>
-          <a
-            href={pr.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-gray-500 hover:text-gray-700 transition-colors"
-          >
-            <ExternalLink className="h-4 w-4" />
-          </a>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleToggleHidden}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+              title="Hide PR details"
+            >
+              <EyeOff className="h-4 w-4" />
+            </button>
+            <a
+              href={pr.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              <ExternalLink className="h-4 w-4" />
+            </a>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="pt-0">

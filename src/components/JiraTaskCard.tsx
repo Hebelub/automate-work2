@@ -5,6 +5,7 @@ import { PullRequestCard } from "@/components/PullRequestCard"
 import { ExternalLink, Clock, User, AlertTriangle, Copy, Check, Eye, EyeOff, X, Globe, Link, FileText, GripVertical, ChevronDown, ChevronRight } from "lucide-react"
 import { useState, useRef, useEffect } from "react"
 import { toggleTaskHidden, setTaskNotes, setTaskParent, wouldCreateLoop } from "@/lib/jiraMetadataService"
+import { usePRMetadata } from "@/hooks/usePRMetadata"
 
 interface JiraTaskCardProps {
   task: TaskWithPRs
@@ -19,6 +20,9 @@ export function JiraTaskCard({ task, onUpdateMetadata }: JiraTaskCardProps) {
   const [isAddingNotes, setIsAddingNotes] = useState(false)
   const cardRef = useRef<HTMLDivElement>(null)
   const notesRef = useRef<HTMLTextAreaElement>(null)
+  
+  // PR metadata hook
+  const { updatePRMetadata, getPRsSortedByVisibility } = usePRMetadata(task.pullRequests)
 
   const handleCopyTaskKey = () => {
     navigator.clipboard.writeText(task.key).then(() => {
@@ -349,8 +353,8 @@ export function JiraTaskCard({ task, onUpdateMetadata }: JiraTaskCardProps) {
               
               {task.pullRequestsExpanded && (
                 <div className="space-y-2">
-                  {task.pullRequests.map((pr) => (
-                    <PullRequestCard key={pr.id} pr={pr} />
+                  {getPRsSortedByVisibility().map((pr) => (
+                    <PullRequestCard key={pr.id} pr={pr} onUpdateMetadata={updatePRMetadata} />
                   ))}
                 </div>
               )}

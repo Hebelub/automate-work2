@@ -7,7 +7,13 @@ export interface JiraTaskMetadata {
   pullRequestsExpanded?: boolean
 }
 
+export interface PullRequestMetadata {
+  id: string
+  hidden: boolean
+}
+
 const STORAGE_KEY = 'jira-task-metadata'
+const PR_STORAGE_KEY = 'pull-request-metadata'
 
 // Get all metadata from localStorage
 export function getAllJiraMetadata(): Record<string, JiraTaskMetadata> {
@@ -182,7 +188,78 @@ export function clearAllMetadata(): void {
   
   try {
     localStorage.removeItem(STORAGE_KEY)
+    localStorage.removeItem(PR_STORAGE_KEY)
   } catch (error) {
     console.error('Error clearing metadata from localStorage:', error)
+  }
+}
+
+// Pull Request Metadata Functions
+
+// Get all PR metadata from localStorage
+export function getAllPRMetadata(): Record<string, PullRequestMetadata> {
+  if (typeof window === 'undefined') {
+    return {}
+  }
+  
+  try {
+    const stored = localStorage.getItem(PR_STORAGE_KEY)
+    return stored ? JSON.parse(stored) : {}
+  } catch (error) {
+    console.error('Error loading PR metadata from localStorage:', error)
+    return {}
+  }
+}
+
+// Get metadata for a specific PR
+export function getPRMetadata(prId: string): PullRequestMetadata {
+  const allMetadata = getAllPRMetadata()
+  return allMetadata[prId] || { id: prId, hidden: false }
+}
+
+// Save PR metadata to localStorage
+export function savePRMetadata(metadata: PullRequestMetadata): void {
+  if (typeof window === 'undefined') {
+    return
+  }
+  
+  try {
+    const allMetadata = getAllPRMetadata()
+    allMetadata[metadata.id] = metadata
+    localStorage.setItem(PR_STORAGE_KEY, JSON.stringify(allMetadata))
+  } catch (error) {
+    console.error('Error saving PR metadata to localStorage:', error)
+  }
+}
+
+// Update specific fields for a PR
+export function updatePRMetadata(
+  prId: string, 
+  updates: Partial<Omit<PullRequestMetadata, 'id'>>
+): void {
+  const currentMetadata = getPRMetadata(prId)
+  const updatedMetadata = { ...currentMetadata, ...updates }
+  savePRMetadata(updatedMetadata)
+}
+
+// Toggle PR hidden state
+export function togglePRHidden(prId: string): void {
+  if (typeof window === 'undefined') {
+    return
+  }
+  
+  try {
+    const metadata = getAllPRMetadata()
+    const currentMetadata = metadata[prId] || { id: prId, hidden: false }
+    const newHidden = !currentMetadata.hidden
+    
+    metadata[prId] = {
+      ...currentMetadata,
+      hidden: newHidden
+    }
+    
+    localStorage.setItem(PR_STORAGE_KEY, JSON.stringify(metadata))
+  } catch (error) {
+    console.error('Error toggling PR hidden state:', error)
   }
 }
