@@ -1,3 +1,5 @@
+import { LocalGitStatus } from "@/types"
+
 export interface JiraTaskMetadata {
   id: string
   parentTaskId?: string
@@ -5,11 +7,13 @@ export interface JiraTaskMetadata {
   hidden: boolean
   childTasksExpanded?: boolean
   pullRequestsExpanded?: boolean
+  localBranchesExpanded?: boolean
 }
 
 export interface PullRequestMetadata {
   id: string
   hidden: boolean
+  localGitStatus?: LocalGitStatus
 }
 
 const STORAGE_KEY = 'jira-task-metadata'
@@ -136,7 +140,8 @@ export function toggleChildTasksExpanded(taskId: string): void {
       id: taskId, 
       hidden: false, 
       childTasksExpanded: true, 
-      pullRequestsExpanded: true 
+      pullRequestsExpanded: true,
+      localBranchesExpanded: true
     }
     const newExpanded = !currentMetadata.childTasksExpanded
     
@@ -164,7 +169,8 @@ export function togglePullRequestsExpanded(taskId: string): void {
       id: taskId, 
       hidden: false, 
       childTasksExpanded: true, 
-      pullRequestsExpanded: true 
+      pullRequestsExpanded: true,
+      localBranchesExpanded: true
     }
     const newExpanded = !currentMetadata.pullRequestsExpanded
     
@@ -247,19 +253,60 @@ export function togglePRHidden(prId: string): void {
   if (typeof window === 'undefined') {
     return
   }
-  
+
   try {
     const metadata = getAllPRMetadata()
     const currentMetadata = metadata[prId] || { id: prId, hidden: false }
     const newHidden = !currentMetadata.hidden
-    
+
     metadata[prId] = {
       ...currentMetadata,
       hidden: newHidden
     }
-    
+
     localStorage.setItem(PR_STORAGE_KEY, JSON.stringify(metadata))
   } catch (error) {
     console.error('Error toggling PR hidden state:', error)
+  }
+}
+
+// Update PR git status
+export function updatePRGitStatus(prId: string, gitStatus: LocalGitStatus): void {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  try {
+    const metadata = getAllPRMetadata()
+    const currentMetadata = metadata[prId] || { id: prId, hidden: false }
+
+    metadata[prId] = {
+      ...currentMetadata,
+      localGitStatus: gitStatus
+    }
+
+    localStorage.setItem(PR_STORAGE_KEY, JSON.stringify(metadata))
+  } catch (error) {
+    console.error('Error updating PR git status:', error)
+  }
+}
+
+// Clear PR git status
+export function clearPRGitStatus(prId: string): void {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  try {
+    const metadata = getAllPRMetadata()
+    const currentMetadata = metadata[prId]
+
+    if (currentMetadata) {
+      delete currentMetadata.localGitStatus
+      metadata[prId] = currentMetadata
+      localStorage.setItem(PR_STORAGE_KEY, JSON.stringify(metadata))
+    }
+  } catch (error) {
+    console.error('Error clearing PR git status:', error)
   }
 }

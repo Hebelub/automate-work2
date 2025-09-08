@@ -15,7 +15,30 @@ export interface JiraTask {
   hidden: boolean
   childTasksExpanded?: boolean
   pullRequestsExpanded?: boolean
+  localBranchesExpanded?: boolean
   childTasks?: TaskWithPRs[]
+}
+
+export interface LocalGitStatus {
+  branch: string
+  exists: boolean
+  isUpToDate: boolean
+  ahead: number
+  behind: number
+  lastCommit?: string
+  hasRemote: boolean
+  repository?: string
+  lastChecked?: string // ISO timestamp of when status was last checked
+}
+
+export interface LocalBranch {
+  branch: string
+  repository: string
+  lastCommit?: string
+  hasRemote: boolean
+  isAhead: boolean
+  aheadCount: number
+  remoteOrigin?: string
 }
 
 export interface GitHubPR {
@@ -34,8 +57,10 @@ export interface GitHubPR {
   reviewStatus: 'pending' | 'approved' | 'changes_requested' | 'no_reviews'
   requestedReviewers: string[]
   approvedReviewers: string[]
+  localGitStatus?: LocalGitStatus // Local git information
 }
 
 export interface TaskWithPRs extends JiraTask {
   pullRequests: GitHubPR[]
+  localBranches?: LocalBranch[] // Local branches that match this task
 }
