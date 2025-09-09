@@ -278,15 +278,6 @@ export function JiraTaskCard({ task, onUpdateMetadata, onRefresh }: JiraTaskCard
                 <FileText className="h-4 w-4" />
               </button>
             )}
-            
-            {/* Refresh Button */}
-            <button
-              onClick={onRefresh}
-              className="text-gray-500 hover:text-gray-700 transition-colors"
-              title="Refresh all data"
-            >
-              <RefreshCw className="h-4 w-4" />
-            </button>
 
             {/* Hide/Show Button */}
             <button
