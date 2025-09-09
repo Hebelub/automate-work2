@@ -1,4 +1,4 @@
-import { GitHubPR } from "@/types"
+import { GitHubPR, ReviewGitHubPR } from "@/types"
 
 // For now, we'll need to add GitHub token to .env.local
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN
@@ -355,5 +355,155 @@ export async function checkGitHubRateLimit(): Promise<{
   } catch (error) {
     console.error('Error checking rate limit:', error)
     return { remaining: 0, limit: 0, resetTime: null, isRateLimited: true }
+  }
+}
+
+// Fetch detailed PR information including reviews
+async function fetchPRDetails(owner: string, repo: string, prNumber: number): Promise<any> {
+  try {
+    const response = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`,
+      {
+        headers: {
+          'Authorization': `token ${GITHUB_TOKEN}`,
+          'Accept': 'application/vnd.github.v3+json',
+        },
+      }
+    )
+
+    if (!response.ok) {
+      console.error(`Failed to fetch PR details for ${owner}/${repo}#${prNumber}: ${response.status}`)
+      return null
+    }
+
+    return await response.json()
+  } catch (error) {
+    console.error(`Error fetching PR details for ${owner}/${repo}#${prNumber}:`, error)
+    return null
+  }
+}
+
+// Fetch PR reviews
+async function fetchPRReviews(owner: string, repo: string, prNumber: number): Promise<any[]> {
+  try {
+    const response = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/reviews`,
+      {
+        headers: {
+          'Authorization': `token ${GITHUB_TOKEN}`,
+          'Accept': 'application/vnd.github.v3+json',
+        },
+      }
+    )
+
+    if (!response.ok) {
+      console.error(`Failed to fetch PR reviews for ${owner}/${repo}#${prNumber}: ${response.status}`)
+      return []
+    }
+
+    return await response.json()
+  } catch (error) {
+    console.error(`Error fetching PR reviews for ${owner}/${repo}#${prNumber}:`, error)
+    return []
+  }
+}
+
+// Fetch PRs that need review using GitHub Search API
+export async function fetchPRsNeedingReview(): Promise<ReviewGitHubPR[]> {
+  if (!GITHUB_TOKEN) {
+    console.warn('GitHub credentials not configured, returning empty array')
+    return []
+  }
+
+  try {
+    console.log('Fetching PRs needing review from GitHub...')
+    
+    // Use GitHub Search API to find PRs that need review
+    // This searches across ALL repositories the user has access to
+    const searchQuery = 'is:pr is:open review-requested:@me'
+    const response = await fetch(
+      `https://api.github.com/search/issues?q=${encodeURIComponent(searchQuery)}&sort=updated&order=desc&per_page=100`,
+      {
+        headers: {
+          'Authorization': `token ${GITHUB_TOKEN}`,
+          'Accept': 'application/vnd.github.v3+json',
+        },
+      }
+    )
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error(`GitHub Search API error: ${response.status} ${response.statusText}`)
+      console.error('Error details:', errorText)
+      throw new Error(`GitHub Search API error: ${response.status} ${response.statusText}`)
+    }
+
+    const data = await response.json()
+    console.log(`Found ${data.items.length} PRs needing review`)
+
+    // Transform search results to ReviewGitHubPR format and fetch detailed info
+    const prs: ReviewGitHubPR[] = await Promise.all(
+      data.items.map(async (item: any) => {
+        // Extract repository name from the URL
+        const repoUrl = item.repository_url
+        const repoMatch = repoUrl.match(/\/repos\/([^\/]+)\/([^\/]+)$/)
+        const repository = repoMatch ? `${repoMatch[1]}/${repoMatch[2]}` : 'unknown'
+        const [owner, repo] = repository.split('/')
+
+        // Fetch detailed PR information
+        const prDetails = await fetchPRDetails(owner, repo, item.number)
+        const reviews = await fetchPRReviews(owner, repo, item.number)
+
+        // Calculate approval status
+        const approvedReviews = reviews.filter((review: any) => review.state === 'APPROVED')
+        const changesRequestedReviews = reviews.filter((review: any) => review.state === 'CHANGES_REQUESTED')
+        const pendingReviews = reviews.filter((review: any) => review.state === 'PENDING')
+        
+        // Determine review status
+        let reviewStatus = 'pending_review'
+        if (approvedReviews.length > 0) {
+          reviewStatus = 'approved'
+        } else if (changesRequestedReviews.length > 0) {
+          reviewStatus = 'changes_requested'
+        } else if (pendingReviews.length > 0) {
+          reviewStatus = 'pending_review'
+        }
+
+        return {
+          id: item.id.toString(),
+          number: item.number,
+          title: item.title,
+          body: item.body || '',
+          state: item.state,
+          draft: item.draft || false,
+          url: item.html_url,
+          repository,
+          branch: item.head?.ref || '',
+          baseBranch: item.base?.ref || '',
+          author: item.user?.login || 'unknown',
+          createdAt: item.created_at,
+          updatedAt: item.updated_at,
+          mergedAt: item.pull_request?.merged_at || null,
+          closedAt: item.closed_at,
+          commits: prDetails?.commits || 0,
+          additions: prDetails?.additions || 0,
+          deletions: prDetails?.deletions || 0,
+          changedFiles: prDetails?.changed_files || 0,
+          reviewStatus,
+          localGitStatus: null, // Will be fetched separately if needed
+          // Additional review information
+          approvedReviews: approvedReviews.length,
+          changesRequestedReviews: changesRequestedReviews.length,
+          pendingReviews: pendingReviews.length,
+          totalReviews: reviews.length,
+          reviewers: reviews.map((review: any) => review.user?.login).filter(Boolean)
+        }
+      })
+    )
+
+    return prs
+  } catch (error) {
+    console.error('Error fetching PRs needing review:', error)
+    return []
   }
 }

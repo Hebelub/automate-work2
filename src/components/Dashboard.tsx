@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { JiraTaskCard } from "@/components/JiraTaskCard";
+import { ReviewInbox } from "@/components/ReviewInbox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 
-import { TaskWithPRs } from "@/types";
+import { TaskWithPRs, GitHubPR } from "@/types";
+import { useReviewInbox } from "@/hooks/useReviewInbox";
 import {
   Users,
   Loader2,
@@ -32,6 +34,14 @@ export function Dashboard() {
     isRateLimited: boolean;
   } | null>(null);
 
+  // Use the review inbox hook for real-time updates
+  const {
+    prs: reviewPRs,
+    hasNewPRs,
+    lastUpdateTime,
+    refresh: refreshReviewPRs
+  } = useReviewInbox();
+
   // Use the metadata hook
   const { updateMetadata, getRootTasksWithMetadata } = useJiraMetadata(tasks);
 
@@ -39,6 +49,7 @@ export function Dashboard() {
   const updateTaskMetadata = (taskId: string, updates: Partial<{ parentTaskId?: string; notes?: string; hidden: boolean; childTasksExpanded?: boolean; pullRequestsExpanded?: boolean; localBranchesExpanded?: boolean }>) => {
     updateMetadata(taskId, updates);
   };
+
 
 
   useEffect(() => {
@@ -364,6 +375,14 @@ export function Dashboard() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+         {/* Review Inbox */}
+         <ReviewInbox 
+           prs={reviewPRs} 
+           isLoading={false}
+           hasNewPRs={hasNewPRs}
+           lastUpdateTime={lastUpdateTime}
+         />
+
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
@@ -377,7 +396,6 @@ export function Dashboard() {
             <span>Total PRs: {totalPRs}</span>
           </div>
         </div>
-
 
         {/* Tasks Grid */}
         {filteredTasks.length > 0 ? (
@@ -399,6 +417,7 @@ export function Dashboard() {
         )}
 
       </div>
+
     </div>
   );
 }

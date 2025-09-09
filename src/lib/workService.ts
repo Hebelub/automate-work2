@@ -1,6 +1,6 @@
-import { TaskWithPRs, JiraTask, GitHubPR, LocalBranch } from "@/types"
+import { TaskWithPRs, JiraTask, GitHubPR, ReviewGitHubPR, LocalBranch } from "@/types"
 import { fetchJiraTasks } from "./jiraService"
-import { fetchPullRequests, clearActiveReposCache, checkGitHubRateLimit } from "./githubService"
+import { fetchPullRequests, clearActiveReposCache, checkGitHubRateLimit, fetchPRsNeedingReview } from "./githubService"
 import { getJiraTaskMetadata, getChildTasks, getPRMetadata } from "./jiraMetadataService"
 
 // Cache for PRs to avoid refetching
@@ -53,6 +53,19 @@ function filterBranchesByTaskKey(branches: LocalBranch[], taskKey: string): Loca
   return branches.filter(branch => {
     return taskKeyRegex.test(branch.branch)
   })
+}
+
+// Function to get PRs needing review
+export async function getPRsNeedingReview(): Promise<ReviewGitHubPR[]> {
+  try {
+    console.log('Fetching PRs needing review...')
+    const reviewPRs = await fetchPRsNeedingReview()
+    console.log(`Found ${reviewPRs.length} PRs needing review`)
+    return reviewPRs
+  } catch (error) {
+    console.error('Error fetching PRs needing review:', error)
+    return []
+  }
 }
 
 // Fast function to load ONLY JIRA tasks + PRs (no Git operations)

@@ -41,23 +41,49 @@ export interface LocalBranch {
   remoteOrigin?: string
 }
 
-export interface GitHubPR {
+// Base PR interface with common fields
+export interface BaseGitHubPR {
   id: string
   title: string
   number: number
-  status: 'open' | 'closed' | 'merged' | 'draft'
   branch: string
   url: string
   author: string
   createdAt: string
   updatedAt: string
-  linkedTaskKey?: string // JIRA task key this PR is linked to
-  repository?: string // Repository name (e.g., "owner/repo")
+  repository: string
   isDraft: boolean
+  localGitStatus?: LocalGitStatus
+}
+
+// PR for JIRA tasks (simpler, focused on task linking)
+export interface GitHubPR extends BaseGitHubPR {
+  linkedTaskKey?: string // JIRA task key this PR is linked to
   reviewStatus: 'pending' | 'approved' | 'changes_requested' | 'no_reviews'
   requestedReviewers: string[]
   approvedReviewers: string[]
-  localGitStatus?: LocalGitStatus // Local git information
+}
+
+// PR for review inbox (detailed review information)
+export interface ReviewGitHubPR extends BaseGitHubPR {
+  // Review-specific fields
+  approvedReviews: number
+  changesRequestedReviews: number
+  pendingReviews: number
+  totalReviews: number
+  reviewers: string[]
+  reviewStatus: 'pending_review' | 'approved' | 'changes_requested' | 'no_reviews'
+  
+  // Additional PR details from GitHub API
+  body: string
+  state: string
+  baseBranch: string
+  mergedAt: string | null
+  closedAt: string | null
+  commits: number
+  additions: number
+  deletions: number
+  changedFiles: number
 }
 
 export interface TaskWithPRs extends JiraTask {
