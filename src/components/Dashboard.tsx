@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { JiraTaskCard } from "@/components/JiraTaskCard";
 import { ReviewInbox } from "@/components/ReviewInbox";
+import { PersonalNotes } from "@/components/PersonalNotes";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -224,7 +225,6 @@ export function Dashboard() {
         pr.author.toLowerCase().includes(searchLower) ||
         pr.branch.toLowerCase().includes(searchLower) ||
         (pr.repository && pr.repository.toLowerCase().includes(searchLower)) ||
-        pr.status.toLowerCase().includes(searchLower) ||
         pr.reviewStatus.toLowerCase().includes(searchLower) ||
         pr.requestedReviewers.some(reviewer => reviewer.toLowerCase().includes(searchLower)) ||
         pr.approvedReviewers.some(reviewer => reviewer.toLowerCase().includes(searchLower))
@@ -375,6 +375,9 @@ export function Dashboard() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+         {/* Personal Notes & Todos */}
+         <PersonalNotes />
+
          {/* Review Inbox */}
          <ReviewInbox 
            prs={reviewPRs} 

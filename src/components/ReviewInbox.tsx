@@ -5,6 +5,25 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ExternalLink, GitPullRequest, Clock, User, CheckCircle, AlertCircle, Circle } from 'lucide-react'
 
+// Function to format time since creation
+const formatTimeSince = (createdAt: string): string => {
+  const now = new Date()
+  const created = new Date(createdAt)
+  const diffMs = now.getTime() - created.getTime()
+  
+  const minutes = Math.floor(diffMs / (1000 * 60))
+  const hours = Math.floor(diffMs / (1000 * 60 * 60))
+  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+  
+  if (minutes < 60) {
+    return `${minutes}m`
+  } else if (hours < 24) {
+    return `${hours}h`
+  } else {
+    return `${days}d`
+  }
+}
+
 interface ReviewInboxProps {
   prs: ReviewGitHubPR[]
   isLoading: boolean
@@ -144,7 +163,7 @@ export function ReviewInbox({
                     </div>
                     <div className="flex items-center gap-1">
                       <Clock className="h-3 w-3" />
-                      <span>{new Date(pr.updatedAt).toLocaleDateString()}</span>
+                      <span>{formatTimeSince(pr.createdAt)} ago</span>
                     </div>
                     <span className="font-mono text-xs">{pr.repository}</span>
                     {pr.reviewers && pr.reviewers.length > 0 && (
