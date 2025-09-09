@@ -383,7 +383,7 @@ export function Dashboard() {
         {filteredTasks.length > 0 ? (
           <div className="grid grid-cols-1 gap-6">
             {filteredTasks.map((task) => (
-              <JiraTaskCard key={task.id} task={task} onUpdateMetadata={updateTaskMetadata} onRefresh={handleRefresh} />
+              <JiraTaskCard key={task.id} task={task} onUpdateMetadata={updateTaskMetadata} />
             ))}
           </div>
         ) : (

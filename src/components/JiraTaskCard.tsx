@@ -12,10 +12,9 @@ import { useBulkGitStatus } from "@/hooks/useBulkGitStatus"
 interface JiraTaskCardProps {
   task: TaskWithPRs
   onUpdateMetadata: (taskId: string, updates: Partial<{ parentTaskId?: string; notes?: string; hidden: boolean; childTasksExpanded?: boolean; pullRequestsExpanded?: boolean; localBranchesExpanded?: boolean }>) => void
-  onRefresh: () => void
 }
 
-export function JiraTaskCard({ task, onUpdateMetadata, onRefresh }: JiraTaskCardProps) {
+export function JiraTaskCard({ task, onUpdateMetadata }: JiraTaskCardProps) {
   const [copiedTaskKey, setCopiedTaskKey] = useState(false)
   const [notes, setNotes] = useState(task.notes || '')
   const [isDragging, setIsDragging] = useState(false)
@@ -340,7 +339,7 @@ export function JiraTaskCard({ task, onUpdateMetadata, onRefresh }: JiraTaskCard
               {task.childTasksExpanded && (
                 <div className="space-y-1">
                   {task.childTasks.map((childTask) => (
-                    <JiraTaskCard key={childTask.id} task={childTask} onUpdateMetadata={onUpdateMetadata} onRefresh={onRefresh} />
+                    <JiraTaskCard key={childTask.id} task={childTask} onUpdateMetadata={onUpdateMetadata} />
                   ))}
                 </div>
               )}
