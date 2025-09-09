@@ -2,17 +2,20 @@ import { TaskWithPRs } from "@/types"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PullRequestCard } from "@/components/PullRequestCard"
-import { ExternalLink, Clock, User, AlertTriangle, Copy, Check, Eye, EyeOff, X, Globe, Link, FileText, GripVertical, ChevronDown, ChevronRight } from "lucide-react"
+import { LocalBranches } from "@/components/LocalBranches"
+import { ExternalLink, Clock, User, AlertTriangle, Copy, Check, Eye, EyeOff, X, Globe, Link, FileText, GripVertical, ChevronDown, ChevronRight, RefreshCw } from "lucide-react"
 import { useState, useRef, useEffect } from "react"
 import { toggleTaskHidden, setTaskNotes, setTaskParent, wouldCreateLoop } from "@/lib/jiraMetadataService"
 import { usePRMetadata } from "@/hooks/usePRMetadata"
+import { useBulkGitStatus } from "@/hooks/useBulkGitStatus"
 
 interface JiraTaskCardProps {
   task: TaskWithPRs
-  onUpdateMetadata: (taskId: string, updates: Partial<{ parentTaskId?: string; notes?: string; hidden: boolean; childTasksExpanded?: boolean; pullRequestsExpanded?: boolean }>) => void
+  onUpdateMetadata: (taskId: string, updates: Partial<{ parentTaskId?: string; notes?: string; hidden: boolean; childTasksExpanded?: boolean; pullRequestsExpanded?: boolean; localBranchesExpanded?: boolean }>) => void
+  onRefresh: () => void
 }
 
-export function JiraTaskCard({ task, onUpdateMetadata }: JiraTaskCardProps) {
+export function JiraTaskCard({ task, onUpdateMetadata, onRefresh }: JiraTaskCardProps) {
   const [copiedTaskKey, setCopiedTaskKey] = useState(false)
   const [notes, setNotes] = useState(task.notes || '')
   const [isDragging, setIsDragging] = useState(false)
@@ -23,6 +26,9 @@ export function JiraTaskCard({ task, onUpdateMetadata }: JiraTaskCardProps) {
   
   // PR metadata hook
   const { updatePRMetadata, getPRsSortedByVisibility } = usePRMetadata(task.pullRequests)
+  
+  // Bulk git status fetching hook
+  const { isLoading: isLoadingGitStatus } = useBulkGitStatus(task.pullRequests, updatePRMetadata)
 
   const handleCopyTaskKey = () => {
     navigator.clipboard.writeText(task.key).then(() => {
@@ -68,6 +74,10 @@ export function JiraTaskCard({ task, onUpdateMetadata }: JiraTaskCardProps) {
 
   const handleTogglePullRequests = () => {
     onUpdateMetadata(task.id, { pullRequestsExpanded: !task.pullRequestsExpanded })
+  }
+
+  const handleToggleLocalBranches = () => {
+    onUpdateMetadata(task.id, { localBranchesExpanded: !task.localBranchesExpanded })
   }
 
   // Auto-resize textarea on mount and when notes change
@@ -269,6 +279,15 @@ export function JiraTaskCard({ task, onUpdateMetadata }: JiraTaskCardProps) {
               </button>
             )}
             
+            {/* Refresh Button */}
+            <button
+              onClick={onRefresh}
+              className="text-gray-500 hover:text-gray-700 transition-colors"
+              title="Refresh all data"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </button>
+
             {/* Hide/Show Button */}
             <button
               onClick={handleToggleHidden}
@@ -277,7 +296,7 @@ export function JiraTaskCard({ task, onUpdateMetadata }: JiraTaskCardProps) {
             >
               <EyeOff className="h-4 w-4" />
             </button>
-            
+
             {/* External Link */}
             <a
               href={task.url}
@@ -330,9 +349,30 @@ export function JiraTaskCard({ task, onUpdateMetadata }: JiraTaskCardProps) {
               {task.childTasksExpanded && (
                 <div className="space-y-1">
                   {task.childTasks.map((childTask) => (
-                    <JiraTaskCard key={childTask.id} task={childTask} onUpdateMetadata={onUpdateMetadata} />
+                    <JiraTaskCard key={childTask.id} task={childTask} onUpdateMetadata={onUpdateMetadata} onRefresh={onRefresh} />
                   ))}
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* Local Branches */}
+          {task.localBranches && task.localBranches.length > 0 && (
+            <div className="space-y-2">
+              <button
+                onClick={handleToggleLocalBranches}
+                className="flex items-center gap-2 text-sm font-medium text-gray-900 hover:text-gray-700 transition-colors"
+              >
+                {task.localBranchesExpanded ? (
+                  <ChevronDown className="h-4 w-4" />
+                ) : (
+                  <ChevronRight className="h-4 w-4" />
+                )}
+                Local Branches ({task.localBranches.length})
+              </button>
+              
+              {task.localBranchesExpanded && (
+                <LocalBranches branches={task.localBranches} taskKey={task.key} taskStatus={task.status} />
               )}
             </div>
           )}
@@ -354,7 +394,7 @@ export function JiraTaskCard({ task, onUpdateMetadata }: JiraTaskCardProps) {
               {task.pullRequestsExpanded && (
                 <div className="space-y-2">
                   {getPRsSortedByVisibility().map((pr) => (
-                    <PullRequestCard key={pr.id} pr={pr} onUpdateMetadata={updatePRMetadata} />
+                    <PullRequestCard key={pr.id} pr={pr} onUpdateMetadata={updatePRMetadata} taskStatus={task.status} />
                   ))}
                 </div>
               )}

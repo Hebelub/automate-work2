@@ -43,8 +43,8 @@ export async function fetchJiraTasks(): Promise<JiraTask[]> {
 
       // Try different JQL queries in order of complexity
     const jqlQueries = [
-      `assignee=currentUser() AND status NOT IN ('Done', 'Rejected', 'Ready for PROD', 'DevBugs', 'Closed', 'Resolved') ORDER BY priority DESC`,
-      `assignee=currentUser() AND status NOT IN ('Done', 'Rejected', 'Ready for PROD', 'DevBugs') ORDER BY priority DESC`,
+      `assignee=currentUser() AND status NOT IN ('Done', 'Rejected', 'DevBugs', 'Closed', 'Resolved') ORDER BY priority DESC`,
+      `assignee=currentUser() AND status NOT IN ('Done', 'Rejected', 'DevBugs') ORDER BY priority DESC`,
       `assignee=currentUser() AND status NOT IN ('Done', 'Rejected') ORDER BY priority DESC`,
       `assignee=currentUser() ORDER BY priority DESC`,
       `assignee=currentUser() AND status != 'Done' ORDER BY priority DESC`,
@@ -124,6 +124,7 @@ export async function fetchJiraTasks(): Promise<JiraTask[]> {
             hidden: false,
             childTasksExpanded: true,
             pullRequestsExpanded: true,
+            localBranchesExpanded: true,
           }
         })
     } catch (error) {

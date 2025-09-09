@@ -1,34 +1,26 @@
-import { GitHubPR } from "@/types"
+import { GitHubPR, LocalBranch } from "@/types"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ExternalLink, GitBranch, User, GitPullRequest, CheckCircle, Clock, AlertCircle, Users, Copy, Check, Eye, EyeOff } from "lucide-react"
 import { useState } from "react"
 import { PullRequestMetadata } from "@/lib/jiraMetadataService"
+import { LocalBranches } from "@/components/LocalBranches"
+import { RepositoryBranchInfo } from "@/components/RepositoryBranchInfo"
 
 interface PullRequestCardProps {
   pr: GitHubPR & PullRequestMetadata
   onUpdateMetadata: (prId: string, updates: Partial<PullRequestMetadata>) => void
+  taskStatus?: string // JIRA task status to display in local branches
 }
 
-export function PullRequestCard({ pr, onUpdateMetadata }: PullRequestCardProps) {
-  const [copiedRepo, setCopiedRepo] = useState(false)
-  const [copiedBranch, setCopiedBranch] = useState(false)
+export function PullRequestCard({ pr, onUpdateMetadata, taskStatus }: PullRequestCardProps) {
+  // Local git status is now fetched in bulk by the parent component
 
   const handleToggleHidden = () => {
     onUpdateMetadata(pr.id, { hidden: !pr.hidden })
   }
 
-  const handleCopyRepo = async () => {
-    await navigator.clipboard.writeText(pr.repository || '')
-    setCopiedRepo(true)
-    setTimeout(() => setCopiedRepo(false), 2000)
-  }
 
-  const handleCopyBranch = async () => {
-    await navigator.clipboard.writeText(pr.branch)
-    setCopiedBranch(true)
-    setTimeout(() => setCopiedBranch(false), 2000)
-  }
 
   const getStatusColor = (status: GitHubPR['status']) => {
     switch (status) {
@@ -147,36 +139,37 @@ export function PullRequestCard({ pr, onUpdateMetadata }: PullRequestCardProps) 
       </CardHeader>
       <CardContent className="pt-0">
         <div className="space-y-3">
-          {/* Repository and Status */}
+          {/* Repository, Branch and Status */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <GitPullRequest className="h-3 w-3 text-gray-500" />
-              <span className="text-xs text-gray-600 font-mono">{pr.repository}</span>
-              <button
-                onClick={handleCopyRepo}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-                title="Copy repository name"
-              >
-                {copiedRepo ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
-              </button>
-            </div>
+            <RepositoryBranchInfo 
+              repository={pr.repository}
+              branch={pr.branch}
+            />
             <Badge className={getStatusColor(pr.status)}>
               #{pr.number} • {pr.status === 'open' && pr.isDraft ? 'Draft' : pr.status}
             </Badge>
           </div>
-          
-          {/* Branch */}
-          <div className="flex items-center gap-2 text-xs text-gray-600">
-            <GitBranch className="h-3 w-3" />
-            <span className="font-mono">{pr.branch}</span>
-            <button
-              onClick={handleCopyBranch}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
-              title="Copy branch name"
-            >
-              {copiedBranch ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
-            </button>
-          </div>
+
+          {/* Local Git Status - Only show if branch exists locally */}
+          {pr.localGitStatus && pr.localGitStatus.exists && (
+            <LocalBranches 
+              branches={[{
+                branch: pr.localGitStatus.branch,
+                repository: pr.localGitStatus.repository || pr.repository || 'unknown',
+                lastCommit: pr.localGitStatus.lastCommit,
+                hasRemote: true, // PR exists, so branch is on GitHub
+                isAhead: pr.localGitStatus.ahead > 0,
+                aheadCount: pr.localGitStatus.ahead,
+                remoteOrigin: `https://github.com/${pr.repository}.git` // Construct remote origin from PR repository
+              }]} 
+              taskKey={pr.linkedTaskKey || ''} 
+              hideRepositoryNames={true}
+              hideBranchNames={true}
+              prStatus={pr.status}
+              prId={pr.id}
+              taskStatus={taskStatus}
+            />
+          )}
 
           {/* Review Status - Only show for open PRs */}
           {pr.status === 'open' && (

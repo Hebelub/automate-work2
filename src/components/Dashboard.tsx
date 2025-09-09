@@ -21,6 +21,7 @@ import { useJiraMetadata } from "@/hooks/useJiraMetadata";
 export function Dashboard() {
   const [tasks, setTasks] = useState<TaskWithPRs[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingLocalBranches, setLoadingLocalBranches] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchText, setSearchText] = useState<string>("");
   const [refreshing, setRefreshing] = useState(false);
@@ -35,7 +36,7 @@ export function Dashboard() {
   const { updateMetadata, getRootTasksWithMetadata } = useJiraMetadata(tasks);
 
   // Function to update task metadata
-  const updateTaskMetadata = (taskId: string, updates: Partial<{ parentTaskId?: string; notes?: string; hidden: boolean; childTasksExpanded?: boolean; pullRequestsExpanded?: boolean }>) => {
+  const updateTaskMetadata = (taskId: string, updates: Partial<{ parentTaskId?: string; notes?: string; hidden: boolean; childTasksExpanded?: boolean; pullRequestsExpanded?: boolean; localBranchesExpanded?: boolean }>) => {
     updateMetadata(taskId, updates);
   };
 
@@ -46,6 +47,7 @@ export function Dashboard() {
         setLoading(true);
         setError(null);
 
+        console.log('Phase 1: Loading JIRA tasks + PRs...');
         const response = await fetch("/api/dashboard");
 
         if (!response.ok) {
@@ -60,7 +62,8 @@ export function Dashboard() {
 
         const fetchedTasks = data.tasks || [];
         setTasks(fetchedTasks);
-        
+        setLoading(false);
+
         // Set rate limit status from API response (after all API calls)
         if (data.rateLimit) {
           setGithubRateLimit({
@@ -69,7 +72,10 @@ export function Dashboard() {
           });
         }
 
-
+        console.log('Phase 1 complete! Starting Phase 2: Loading local branches...');
+        
+        // Phase 2: Load local branches in background
+        loadLocalBranches(fetchedTasks);
 
         // Debug: Log all unique status names to see what's actually coming from JIRA
         const actualStatuses = [
@@ -99,8 +105,50 @@ export function Dashboard() {
       } catch (err) {
         setError("Failed to load tasks");
         console.error("Error loading dashboard data:", err);
-      } finally {
         setLoading(false);
+      }
+    }
+
+    async function loadLocalBranches(tasks: TaskWithPRs[]) {
+      try {
+        setLoadingLocalBranches(true);
+        console.log('Phase 2: Loading local branches...', tasks.length, 'tasks');
+        
+        console.log('Phase 2: Making POST request with', tasks.length, 'tasks');
+        
+        const response = await fetch('/api/dashboard', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            action: 'local-branches',
+            tasks: tasks
+          })
+        });
+        
+        console.log('Phase 2: Response status:', response.status);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('Phase 2: Response data:', data);
+
+        if (data.error) {
+          throw new Error(data.error);
+        }
+
+        const tasksWithBranches = data.tasks || [];
+        console.log('Phase 2: Setting tasks with branches:', tasksWithBranches.length);
+        setTasks(tasksWithBranches);
+        console.log('Phase 2 complete! Local branches loaded.');
+      } catch (err) {
+        console.error("Error loading local branches:", err);
+        // Continue without local branches - tasks are already loaded
+      } finally {
+        setLoadingLocalBranches(false);
       }
     }
 
@@ -126,7 +174,7 @@ export function Dashboard() {
       }
 
       setTasks(data.tasks || []);
-      
+
       // Set rate limit status from API response (after all API calls)
       if (data.rateLimit) {
         setGithubRateLimit({
@@ -257,9 +305,12 @@ export function Dashboard() {
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <Users className="h-4 w-4" />
                 <span>{tasks.length} Tasks</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <span>{tasks.length} Total Tasks</span>
+                {loadingLocalBranches && (
+                  <div className="flex items-center gap-1 text-blue-600">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    <span className="text-xs">Loading local branches...</span>
+                  </div>
+                )}
               </div>
               <Button
                 variant="outline"
@@ -332,7 +383,7 @@ export function Dashboard() {
         {filteredTasks.length > 0 ? (
           <div className="grid grid-cols-1 gap-6">
             {filteredTasks.map((task) => (
-              <JiraTaskCard key={task.id} task={task} onUpdateMetadata={updateTaskMetadata} />
+              <JiraTaskCard key={task.id} task={task} onUpdateMetadata={updateTaskMetadata} onRefresh={handleRefresh} />
             ))}
           </div>
         ) : (

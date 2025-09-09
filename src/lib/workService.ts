@@ -1,16 +1,64 @@
-import { TaskWithPRs, JiraTask, GitHubPR } from "@/types"
+import { TaskWithPRs, JiraTask, GitHubPR, LocalBranch } from "@/types"
 import { fetchJiraTasks } from "./jiraService"
 import { fetchPullRequests, clearActiveReposCache, checkGitHubRateLimit } from "./githubService"
-import { getJiraTaskMetadata, getChildTasks } from "./jiraMetadataService"
+import { getJiraTaskMetadata, getChildTasks, getPRMetadata } from "./jiraMetadataService"
 
 // Cache for PRs to avoid refetching
 let cachedPRs: GitHubPR[] = []
 let cachedPRsTimestamp = 0
 const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
 
+// Helper function to apply PR metadata to PRs
+function applyPRMetadata(prs: GitHubPR[]): (GitHubPR & any)[] {
+  return prs.map(pr => {
+    const metadata = getPRMetadata(pr.id)
+    return {
+      ...pr,
+      ...metadata
+    }
+  })
+}
+
+// Helper function to fetch ALL local branches from all repositories
+async function fetchAllLocalBranches(): Promise<LocalBranch[]> {
+  try {
+    // Import the function directly since we're on the server side
+    const { getAllLocalBranches } = await import('@/app/api/local-git/route')
+    const branches = await getAllLocalBranches()
+    return branches as LocalBranch[]
+  } catch (error) {
+    console.error('Error fetching all local branches:', error)
+    return []
+  }
+}
+
+// Helper function to fetch local branches only for specific task keys (much more efficient!)
+async function fetchAllLocalBranchesForTaskKeys(taskKeys: string[]): Promise<LocalBranch[]> {
+  try {
+    // Import the function directly since we're on the server side
+    const { getLocalBranchesForTaskKeys } = await import('@/app/api/local-git/route')
+    const branches = await getLocalBranchesForTaskKeys(taskKeys)
+    return branches as LocalBranch[]
+  } catch (error) {
+    console.error('Error fetching local branches for task keys:', error)
+    return []
+  }
+}
+
+// Helper function to filter branches by task key
+function filterBranchesByTaskKey(branches: LocalBranch[], taskKey: string): LocalBranch[] {
+  // Create case-insensitive regex for the task key
+  const taskKeyRegex = new RegExp(taskKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
+  
+  return branches.filter(branch => {
+    return taskKeyRegex.test(branch.branch)
+  })
+}
+
+// Fast function to load ONLY JIRA tasks + PRs (no Git operations)
 export async function getTasksWithPRs(selectedRepo?: string): Promise<TaskWithPRs[]> {
   try {
-    console.log('Starting to fetch work data...')
+    console.log('Phase 1: Loading JIRA tasks + PRs (fast)...')
     
     // Check GitHub rate limit first
     const rateLimitBefore = await checkGitHubRateLimit()
@@ -59,20 +107,20 @@ export async function getTasksWithPRs(selectedRepo?: string): Promise<TaskWithPR
 
     console.log(`Fetched ${jiraTasks.length} JIRA tasks and using ${allPRs.length} PRs`)
 
-    // Combine tasks with their linked PRs and metadata
+    // Combine tasks with their linked PRs and metadata (NO local branches)
     const tasksWithPRs = jiraTasks.map(task => {
-      const linkedPRs = allPRs.filter(pr => pr.linkedTaskKey?.toLowerCase() === task.key.toLowerCase())
+      const linkedPRs = applyPRMetadata(allPRs.filter(pr => pr.linkedTaskKey?.toLowerCase() === task.key.toLowerCase()))
       if (linkedPRs.length > 0) {
         console.log(`Task ${task.key} has ${linkedPRs.length} linked PRs:`, linkedPRs.map(pr => `#${pr.number} (${pr.repository})`))
       }
-      
+
       // Get metadata for this task
       const metadata = getJiraTaskMetadata(task.id)
-      
-      // Get child tasks
+
+      // Get child tasks (without local branches)
       const childTaskIds = getChildTasks(task.id)
       const childTasks = jiraTasks.filter(childTask => childTaskIds.includes(childTask.id)).map(childTask => {
-        const childLinkedPRs = allPRs.filter(pr => pr.linkedTaskKey?.toLowerCase() === childTask.key.toLowerCase())
+        const childLinkedPRs = applyPRMetadata(allPRs.filter(pr => pr.linkedTaskKey?.toLowerCase() === childTask.key.toLowerCase()))
         const childMetadata = getJiraTaskMetadata(childTask.id)
         return {
           ...childTask,
@@ -80,7 +128,7 @@ export async function getTasksWithPRs(selectedRepo?: string): Promise<TaskWithPR
           pullRequests: childLinkedPRs
         }
       })
-      
+
       return {
         ...task,
         ...metadata,
@@ -92,9 +140,6 @@ export async function getTasksWithPRs(selectedRepo?: string): Promise<TaskWithPR
     const tasksWithPRsCount = tasksWithPRs.filter(task => task.pullRequests.length > 0).length
     console.log(`Total tasks with linked PRs: ${tasksWithPRsCount}`)
 
-    // Check GitHub rate limit after API calls
-    const rateLimitAfter = await checkGitHubRateLimit()
-
     return tasksWithPRs
   } catch (error) {
     console.error('Error fetching work data:', error)
@@ -102,7 +147,120 @@ export async function getTasksWithPRs(selectedRepo?: string): Promise<TaskWithPR
   }
 }
 
+// Function to combine tasks with local branches (Phase 2)
+export async function combineTasksWithLocalBranches(tasks: TaskWithPRs[]): Promise<TaskWithPRs[]> {
+  try {
+    console.log('Phase 2: Loading local branches and combining with tasks...')
+    
+    // Extract all unique task keys from tasks and child tasks
+    const allTaskKeys = new Set<string>()
+    tasks.forEach(task => {
+      allTaskKeys.add(task.key)
+      task.childTasks?.forEach(childTask => {
+        allTaskKeys.add(childTask.key)
+      })
+    })
+    
+    const taskKeysArray = Array.from(allTaskKeys)
+    console.log(`Looking for branches matching ${taskKeysArray.length} task keys:`, taskKeysArray)
+    
+    // Fetch local branches only for relevant task keys (much more efficient!)
+    const allLocalBranches = await fetchAllLocalBranchesForTaskKeys(taskKeysArray)
+    console.log(`Found ${allLocalBranches.length} total local branches matching task keys`)
 
+    // Combine tasks with local branches
+    const tasksWithBranches = tasks.map(task => {
+      // Filter local branches for this specific task
+      const taskLocalBranches = filterBranchesByTaskKey(allLocalBranches, task.key)
+      
+      // Filter out branches that already have corresponding PRs
+      const localBranches = taskLocalBranches.filter(localBranch => {
+        const hasCorrespondingPR = task.pullRequests.some(pr => {
+          // Compare branch names
+          if (pr.branch !== localBranch.branch) return false
+          
+          // Compare repository names - handle both direct matches and remote origin matches
+          if (pr.repository === localBranch.repository) return true
+          
+          // Check if the PR repository matches the local branch repository's remote origin
+          // PR repository format: "owner/repo" (e.g., "tfso/website-accounting")
+          // Local repository: directory name (e.g., "website-accounting" or "feature-history-tab")
+          const prRepoName = pr.repository?.split('/').pop() // Extract repo name from "owner/repo"
+          
+          // Direct repository name match
+          if (prRepoName === localBranch.repository) return true
+          
+          // Check if the local branch's remote origin matches the PR repository
+          if (localBranch.remoteOrigin) {
+            // Extract owner/repo from remote origin URL (e.g., "https://github.com/tfso/website-accounting.git")
+            const remoteMatch = localBranch.remoteOrigin.match(/github\.com[/:]([^/]+)\/([^/]+?)(?:\.git)?$/)
+            if (remoteMatch) {
+              const [, owner, repo] = remoteMatch
+              const remoteRepoName = `${owner}/${repo}`
+              if (remoteRepoName === pr.repository) return true
+            }
+          }
+          
+          return false
+        })
+        
+        return !hasCorrespondingPR
+      })
+      
+      if (localBranches.length > 0) {
+        console.log(`Task ${task.key} has ${localBranches.length} local branches:`, localBranches.map(b => `${b.branch} (${b.repository})`))
+      }
+
+      // Process child tasks with local branches
+      const childTasksWithBranches = task.childTasks?.map(childTask => {
+        const childLocalBranches = filterBranchesByTaskKey(allLocalBranches, childTask.key).filter(localBranch => {
+          const hasCorrespondingPR = childTask.pullRequests.some(pr => {
+            // Compare branch names
+            if (pr.branch !== localBranch.branch) return false
+            
+            // Compare repository names - handle both direct matches and remote origin matches
+            if (pr.repository === localBranch.repository) return true
+            
+            // Check if the PR repository matches the local branch repository's remote origin
+            const prRepoName = pr.repository?.split('/').pop()
+            
+            // Direct repository name match
+            if (prRepoName === localBranch.repository) return true
+            
+            // Check if the local branch's remote origin matches the PR repository
+            if (localBranch.remoteOrigin) {
+              const remoteMatch = localBranch.remoteOrigin.match(/github\.com[/:]([^/]+)\/([^/]+?)(?:\.git)?$/)
+              if (remoteMatch) {
+                const [, owner, repo] = remoteMatch
+                const remoteRepoName = `${owner}/${repo}`
+                if (remoteRepoName === pr.repository) return true
+              }
+            }
+            
+            return false
+          })
+          return !hasCorrespondingPR
+        })
+
+        return {
+          ...childTask,
+          localBranches: childLocalBranches.length > 0 ? childLocalBranches : undefined
+        }
+      })
+
+      return {
+        ...task,
+        localBranches: localBranches.length > 0 ? localBranches : undefined,
+        childTasks: childTasksWithBranches
+      }
+    })
+
+    return tasksWithBranches
+  } catch (error) {
+    console.error('Error combining tasks with local branches:', error)
+    return tasks
+  }
+}
 
 export async function getTasksByStatus(status: JiraTask['status']): Promise<TaskWithPRs[]> {
   const allTasks = await getTasksWithPRs()
