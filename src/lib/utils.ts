@@ -49,13 +49,13 @@ function getStatusPriority(status: string): number {
     case 'open':
     case 'todo':
       return 2
-    case 'qa':
-      return 3
-    case 'on hold':
-      return 4
-    case 'done':
-      return 5
     case 'ready for prod':
+      return 3
+    case 'qa':
+      return 4
+    case 'on hold':
+      return 5
+    case 'done':
       return 6
     case 'rejected':
       return 7
