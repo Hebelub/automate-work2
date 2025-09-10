@@ -6,6 +6,7 @@ import { ReviewInbox } from "@/components/ReviewInbox";
 import { PersonalNotes } from "@/components/PersonalNotes";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { sortTasksByPriority } from "@/lib/utils";
 
 
 import { TaskWithPRs, GitHubPR } from "@/types";
@@ -246,9 +247,10 @@ export function Dashboard() {
     });
   };
 
-  // Get root tasks with metadata applied and filter
+  // Get root tasks with metadata applied, filter, and sort by priority
   const rootTasksWithMetadata = getRootTasksWithMetadata();
   const filteredTasks = searchTasks(rootTasksWithMetadata, searchText);
+  const sortedTasks = sortTasksByPriority(filteredTasks);
 
   const totalPRs = tasks.reduce(
     (sum, task) => sum + task.pullRequests.length,
@@ -405,17 +407,18 @@ export function Dashboard() {
             <h2 className="text-xl font-semibold text-gray-900">
               Filtered Tasks
             </h2>
-            <Badge variant="secondary">{filteredTasks.length} tasks</Badge>
+            <Badge variant="secondary">{sortedTasks.length} tasks</Badge>
           </div>
           <div className="flex items-center gap-4 text-sm text-gray-600">
+            <span>Tasks: {sortedTasks.length}</span>
             <span>Total PRs: {totalPRs}</span>
           </div>
         </div>
 
         {/* Tasks Grid */}
-        {filteredTasks.length > 0 ? (
+        {sortedTasks.length > 0 ? (
           <div className="grid grid-cols-1 gap-6">
-            {filteredTasks.map((task) => (
+            {sortedTasks.map((task) => (
               <JiraTaskCard key={task.id} task={task} onUpdateMetadata={updateTaskMetadata} />
             ))}
           </div>
