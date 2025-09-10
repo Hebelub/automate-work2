@@ -46,10 +46,10 @@ function getStatusPriority(status: string): number {
   switch (status.toLowerCase()) {
     case 'in progress':
       return 1
+    case 'ready for prod':
+      return 2
     case 'open':
     case 'todo':
-      return 2
-    case 'ready for prod':
       return 3
     case 'qa':
       return 4
