@@ -630,7 +630,24 @@ async function pushBranch(repoPath: string, branchName: string): Promise<{ succe
     const currentBranchOutput = execSync('git rev-parse --abbrev-ref HEAD', { cwd: repoPath, encoding: 'utf8' }).trim()
     const wasOnBranch = currentBranchOutput === branchName
 
-    // Switch to branch if not already on it
+    // Check if the branch is being used by a worktree
+    let isWorktreeBranch = false
+    try {
+      const worktreeListOutput = execSync('git worktree list', { cwd: repoPath, encoding: 'utf8' })
+      isWorktreeBranch = worktreeListOutput.includes(branchName)
+    } catch (error) {
+      // If worktree command fails, assume it's not a worktree issue
+      console.log('Could not check worktree status, proceeding with normal push')
+    }
+
+    // If branch is in a worktree, we can't checkout to it, so just push directly
+    if (isWorktreeBranch) {
+      console.log(`Branch ${branchName} is in a worktree, pushing without checkout`)
+      const pushOutput = execSync(`git push -u origin ${branchName}`, { cwd: repoPath, encoding: 'utf8' })
+      return { success: true, message: 'Branch pushed successfully (from worktree)' }
+    }
+
+    // Normal flow: switch to branch if not already on it
     if (!wasOnBranch) {
       execSync(`git checkout ${branchName}`, { cwd: repoPath })
     }

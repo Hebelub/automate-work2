@@ -75,7 +75,19 @@ export function useJiraPolling(
               console.log('No JIRA changes detected')
             }
             
-            return newTasks
+            // Merge new tasks with existing local branches to preserve them
+            const mergedTasks = newTasks.map((newTask: TaskWithPRs) => {
+              const existingTask = prevTasks.find(prevTask => prevTask.key === newTask.key)
+              if (existingTask && existingTask.localBranches) {
+                return {
+                  ...newTask,
+                  localBranches: existingTask.localBranches
+                }
+              }
+              return newTask
+            })
+            
+            return mergedTasks
           })
           
           setLastJiraCheck(new Date())
