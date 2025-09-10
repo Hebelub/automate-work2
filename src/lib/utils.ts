@@ -88,11 +88,38 @@ function getIssueTypePriority(issueType: string): number {
 }
 
 /**
- * Sorts tasks by priority (hidden status first, then status, then issue type)
+ * Gets the priority score for a task priority
+ * Lower numbers = higher priority (appears first)
+ */
+function getPriorityValue(priority: string): number {
+  switch (priority.toLowerCase()) {
+    case 'blocker':
+      return 1
+    case 'critical':
+      return 2
+    case 'urgent':
+      return 3
+    case 'major':
+      return 4
+    case 'high':
+      return 5
+    case 'minor':
+      return 6
+    case 'low':
+      return 7
+    case 'trivial':
+      return 8
+    default:
+      return 9 // Default for unknown priorities
+  }
+}
+
+/**
+ * Sorts tasks by priority (hidden status first, then status, then priority, then issue type)
  * @param tasks - Array of tasks to sort
  * @returns Sorted array of tasks
  */
-export function sortTasksByPriority<T extends { status: string; issueType: string; hidden?: boolean }>(tasks: T[]): T[] {
+export function sortTasksByPriority<T extends { status: string; issueType: string; priority?: string; hidden?: boolean }>(tasks: T[]): T[] {
   return [...tasks].sort((a, b) => {
     // First, compare by hidden status - hidden tasks go to bottom
     const hiddenA = a.hidden ? 1 : 0
@@ -110,7 +137,15 @@ export function sortTasksByPriority<T extends { status: string; issueType: strin
       return statusA - statusB
     }
     
-    // If status is the same, compare by issue type priority
+    // If status is the same, compare by priority
+    const priorityA = getPriorityValue(a.priority || '')
+    const priorityB = getPriorityValue(b.priority || '')
+    
+    if (priorityA !== priorityB) {
+      return priorityA - priorityB
+    }
+    
+    // If priority is the same, compare by issue type priority
     const typeA = getIssueTypePriority(a.issueType)
     const typeB = getIssueTypePriority(b.issueType)
     
