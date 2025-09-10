@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 
 import { TaskWithPRs, GitHubPR } from "@/types";
 import { useReviewInbox } from "@/hooks/useReviewInbox";
+import { useJiraPolling } from "@/hooks/useJiraPolling";
 import {
   Users,
   Loader2,
@@ -22,7 +23,6 @@ import {
 import { useJiraMetadata } from "@/hooks/useJiraMetadata";
 
 export function Dashboard() {
-  const [tasks, setTasks] = useState<TaskWithPRs[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingLocalBranches, setLoadingLocalBranches] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,8 +43,19 @@ export function Dashboard() {
     refresh: refreshReviewPRs
   } = useReviewInbox();
 
+  // Use the JIRA polling hook for background updates
+  const {
+    tasks,
+    setTasks,
+    jiraHasChanges,
+    setJiraHasChanges,
+    lastJiraCheck,
+    setLastJiraCheck
+  } = useJiraPolling([], loading);
+
   // Use the metadata hook
   const { updateMetadata, getRootTasksWithMetadata } = useJiraMetadata(tasks);
+
 
   // Function to update task metadata
   const updateTaskMetadata = (taskId: string, updates: Partial<{ parentTaskId?: string; notes?: string; hidden: boolean; childTasksExpanded?: boolean; pullRequestsExpanded?: boolean; localBranchesExpanded?: boolean }>) => {
@@ -186,6 +197,7 @@ export function Dashboard() {
       }
 
       setTasks(data.tasks || []);
+      setJiraHasChanges(false); // Clear change indicator
 
       // Set rate limit status from API response (after all API calls)
       if (data.rateLimit) {
@@ -328,12 +340,12 @@ export function Dashboard() {
                 size="sm"
                 onClick={handleRefresh}
                 disabled={refreshing}
-                className="flex items-center gap-2"
+                className={`flex items-center gap-2 ${jiraHasChanges ? "border-orange-500 bg-orange-50" : ""}`}
               >
                 <RefreshCw
                   className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
                 />
-                Refresh
+                Refresh {jiraHasChanges && "• Updated"}
               </Button>
             </div>
           </div>

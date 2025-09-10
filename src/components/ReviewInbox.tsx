@@ -5,6 +5,36 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ExternalLink, GitPullRequest, Clock, User, CheckCircle, AlertCircle, Circle } from 'lucide-react'
 
+// Helper functions for read tracking
+const getReadPRs = (): Set<string> => {
+  try {
+    const read = localStorage.getItem('review-inbox-read')
+    return new Set(JSON.parse(read || '[]'))
+  } catch {
+    return new Set()
+  }
+}
+
+const markPRAsRead = (prId: string) => {
+  try {
+    const read = getReadPRs()
+    read.add(prId)
+    localStorage.setItem('review-inbox-read', JSON.stringify([...read]))
+  } catch (error) {
+    console.error('Failed to mark PR as read:', error)
+  }
+}
+
+const markAllAsRead = (prs: ReviewGitHubPR[]) => {
+  try {
+    const read = getReadPRs()
+    prs.forEach(pr => read.add(pr.id))
+    localStorage.setItem('review-inbox-read', JSON.stringify([...read]))
+  } catch (error) {
+    console.error('Failed to mark all PRs as read:', error)
+  }
+}
+
 // Function to format time since creation
 const formatTimeSince = (createdAt: string): string => {
   const now = new Date()
@@ -37,14 +67,30 @@ export function ReviewInbox({
   hasNewPRs = false, 
   lastUpdateTime
 }: ReviewInboxProps) {
-  const [expanded, setExpanded] = useState(true)
+  const [expanded, setExpanded] = useState(false)
+  const [readPRs, setReadPRs] = useState<Set<string>>(new Set())
 
-  // Auto-expand when there are new PRs
+  // Load read PRs from localStorage
   useEffect(() => {
-    if (hasNewPRs) {
-      setExpanded(true)
+    setReadPRs(getReadPRs())
+  }, [])
+
+  // Calculate new vs total counts
+  const newPRs = prs.filter(pr => !readPRs.has(pr.id))
+  const newCount = newPRs.length
+  const totalCount = prs.length
+
+  // Handle expand/collapse
+  const handleToggle = () => {
+    const newExpanded = !expanded
+    setExpanded(newExpanded)
+    
+    // Mark all as read when opening
+    if (newExpanded) {
+      markAllAsRead(prs)
+      setReadPRs(new Set(prs.map(pr => pr.id)))
     }
-  }, [hasNewPRs])
+  }
 
 
   // Function to get approval status badge
@@ -113,11 +159,20 @@ export function ReviewInbox({
         <CardTitle className="flex items-center gap-2 text-lg">
           <GitPullRequest className="h-5 w-5 text-orange-600" />
           Review Inbox
-           <Badge variant="destructive" className="ml-2">{prs.length}</Badge>
+          <div className="flex items-center gap-2 ml-2">
+            {newCount > 0 && (
+              <Badge variant="destructive" className="text-xs">
+                {newCount} new
+              </Badge>
+            )}
+            <Badge variant="outline" className="text-xs text-gray-500">
+              {totalCount} total
+            </Badge>
+          </div>
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setExpanded(!expanded)}
+            onClick={handleToggle}
             className="ml-auto"
           >
             {expanded ? 'Collapse' : 'Expand'}
@@ -134,13 +189,19 @@ export function ReviewInbox({
         <CardContent className="space-y-3 pb-6">
           {prs.map((pr) => {
             const approvalStatus = getApprovalStatus(pr)
+            const isUnread = !readPRs.has(pr.id)
             return (
               <div
                 key={pr.id}
-                className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors"
+                className={`flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors ${
+                  isUnread ? 'bg-blue-50 border-blue-200' : ''
+                }`}
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
+                    {isUnread && (
+                      <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
+                    )}
                     <h4 className="font-medium text-sm truncate">{pr.title}</h4>
                     <Badge variant="outline" className="text-xs">
                       #{pr.number}
