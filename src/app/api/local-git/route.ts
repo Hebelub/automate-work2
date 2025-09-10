@@ -174,6 +174,36 @@ async function updateBranch(repoPath: string, branchName: string): Promise<{ suc
   }
 }
 
+// Helper function to get the main branch name (master or main)
+function getMainBranchName(repoPath: string): string {
+  try {
+    // First try to get the default branch from remote
+    const remoteDefaultBranch = execSync('git symbolic-ref refs/remotes/origin/HEAD', { cwd: repoPath, encoding: 'utf8' }).trim()
+    if (remoteDefaultBranch) {
+      return remoteDefaultBranch.replace('refs/remotes/origin/', '')
+    }
+  } catch (error) {
+    // If remote default branch doesn't exist, try common names
+  }
+
+  // Check if master exists
+  try {
+    const masterExists = execSync('git show-ref --verify --quiet refs/heads/master', { cwd: repoPath, encoding: 'utf8' })
+    return 'master'
+  } catch (error) {
+    // Master doesn't exist, try main
+  }
+
+  // Check if main exists
+  try {
+    const mainExists = execSync('git show-ref --verify --quiet refs/heads/main', { cwd: repoPath, encoding: 'utf8' })
+    return 'main'
+  } catch (error) {
+    // Neither exists, default to main
+    return 'main'
+  }
+}
+
 // Delete branch locally
 async function deleteBranch(repoPath: string, branchName: string): Promise<{ success: boolean; message: string }> {
   try {
@@ -181,7 +211,25 @@ async function deleteBranch(repoPath: string, branchName: string): Promise<{ suc
     const currentBranchOutput = execSync('git rev-parse --abbrev-ref HEAD', { cwd: repoPath, encoding: 'utf8' }).trim()
 
     if (currentBranchOutput === branchName) {
-      return { success: false, message: 'Cannot delete branch you are currently on' }
+      // We're on the branch we want to delete, checkout to main/master first
+      const mainBranch = getMainBranchName(repoPath)
+      
+      try {
+        // Try to checkout to the main branch
+        execSync(`git checkout ${mainBranch}`, { cwd: repoPath })
+        console.log(`Switched to ${mainBranch} before deleting ${branchName}`)
+      } catch (checkoutError) {
+        // If we can't checkout to main, try to create it from origin
+        try {
+          execSync(`git checkout -b ${mainBranch} origin/${mainBranch}`, { cwd: repoPath })
+          console.log(`Created and switched to ${mainBranch} from origin before deleting ${branchName}`)
+        } catch (createError) {
+          return { 
+            success: false, 
+            message: `Cannot delete branch you are currently on. Failed to switch to ${mainBranch}: ${checkoutError instanceof Error ? checkoutError.message : 'Unknown error'}` 
+          }
+        }
+      }
     }
 
     // Check if branch exists before trying to delete
