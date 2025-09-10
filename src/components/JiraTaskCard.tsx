@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PullRequestCard } from "@/components/PullRequestCard"
 import { LocalBranches } from "@/components/LocalBranches"
 import { CreateBranchSection } from "@/components/CreateBranchSection"
-import { ExternalLink, Clock, User, AlertTriangle, Copy, Check, Eye, EyeOff, X, Globe, Link, FileText, GripVertical, ChevronDown, ChevronRight, RefreshCw } from "lucide-react"
+import { ExternalLink, Clock, User, AlertTriangle, Copy, Check, Eye, EyeOff, X, Globe, Link, FileText, GripVertical, ChevronDown, ChevronRight, RefreshCw, GitBranch } from "lucide-react"
 import { useState, useRef, useEffect } from "react"
 import { toggleTaskHidden, setTaskNotes, setTaskParent, wouldCreateLoop } from "@/lib/jiraMetadataService"
 import { usePRMetadata } from "@/hooks/usePRMetadata"
@@ -394,11 +394,17 @@ export function JiraTaskCard({ task, onUpdateMetadata }: JiraTaskCardProps) {
 
           {/* Create New Branch - only show if no local branches and no PRs */}
           {(!task.localBranches || task.localBranches.length === 0) && task.pullRequests.length === 0 && (
-            <CreateBranchSection 
-              taskKey={task.key}
-              taskName={task.name}
-              issueType={task.issueType}
-            />
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
+                <GitBranch className="h-4 w-4" />
+                Create New Branch
+              </div>
+              <CreateBranchSection 
+                taskKey={task.key}
+                taskName={task.name}
+                issueType={task.issueType}
+              />
+            </div>
           )}
         </div>
       </CardContent>
