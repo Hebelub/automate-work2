@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PullRequestCard } from "@/components/PullRequestCard"
 import { LocalBranches } from "@/components/LocalBranches"
+import { CreateBranchSection } from "@/components/CreateBranchSection"
 import { ExternalLink, Clock, User, AlertTriangle, Copy, Check, Eye, EyeOff, X, Globe, Link, FileText, GripVertical, ChevronDown, ChevronRight, RefreshCw } from "lucide-react"
 import { useState, useRef, useEffect } from "react"
 import { toggleTaskHidden, setTaskNotes, setTaskParent, wouldCreateLoop } from "@/lib/jiraMetadataService"
@@ -389,6 +390,15 @@ export function JiraTaskCard({ task, onUpdateMetadata }: JiraTaskCardProps) {
                 </div>
               )}
             </div>
+          )}
+
+          {/* Create New Branch - only show if no local branches and no PRs */}
+          {(!task.localBranches || task.localBranches.length === 0) && task.pullRequests.length === 0 && (
+            <CreateBranchSection 
+              taskKey={task.key}
+              taskName={task.name}
+              issueType={task.issueType}
+            />
           )}
         </div>
       </CardContent>
