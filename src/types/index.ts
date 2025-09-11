@@ -9,13 +9,7 @@ export interface JiraTask {
   priority: string
   description: string
   url: string
-  // Local metadata
-  parentTaskId?: string
-  notes?: string
-  hidden: boolean
-  childTasksExpanded?: boolean
-  pullRequestsExpanded?: boolean
-  localBranchesExpanded?: boolean
+  lastJiraUpdate?: string // ISO timestamp of when task was last updated in Jira
   childTasks?: TaskWithPRs[]
 }
 
@@ -58,6 +52,7 @@ export interface BaseGitHubPR {
 
 // PR for JIRA tasks (simpler, focused on task linking)
 export interface GitHubPR extends BaseGitHubPR {
+  status: 'open' | 'closed' | 'merged' | 'draft'
   linkedTaskKey?: string // JIRA task key this PR is linked to
   reviewStatus: 'pending' | 'approved' | 'changes_requested' | 'no_reviews'
   requestedReviewers: string[]
@@ -89,4 +84,12 @@ export interface ReviewGitHubPR extends BaseGitHubPR {
 export interface TaskWithPRs extends JiraTask {
   pullRequests: GitHubPR[]
   localBranches?: LocalBranch[] // Local branches that match this task
+  // Local metadata fields
+  parentTaskId?: string
+  notes?: string
+  hiddenStatus?: 'visible' | 'hidden' | 'hiddenUntilUpdated' // Hidden status from metadata
+  hiddenUntilUpdatedDate?: string // ISO timestamp when "hide until updated" was set
+  childTasksExpanded?: boolean
+  pullRequestsExpanded?: boolean
+  localBranchesExpanded?: boolean
 }

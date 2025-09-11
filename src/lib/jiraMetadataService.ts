@@ -1,10 +1,13 @@
 import { LocalGitStatus } from "@/types"
 
+export type HiddenStatus = 'visible' | 'hidden' | 'hiddenUntilUpdated'
+
 export interface JiraTaskMetadata {
   id: string
   parentTaskId?: string
   notes?: string
-  hidden: boolean
+  hiddenStatus: HiddenStatus // Required field for hiding status
+  hiddenUntilUpdatedDate?: string // ISO timestamp when "hide until updated" was set
   childTasksExpanded?: boolean
   pullRequestsExpanded?: boolean
   localBranchesExpanded?: boolean
@@ -27,7 +30,18 @@ export function getAllJiraMetadata(): Record<string, JiraTaskMetadata> {
   
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
-    return stored ? JSON.parse(stored) : {}
+    const metadata = stored ? JSON.parse(stored) : {}
+    
+    // Ensure all metadata entries have the required hiddenStatus field
+    const migratedMetadata: Record<string, JiraTaskMetadata> = {}
+    for (const [taskId, taskMetadata] of Object.entries(metadata)) {
+      migratedMetadata[taskId] = {
+        ...(taskMetadata as JiraTaskMetadata),
+        hiddenStatus: (taskMetadata as JiraTaskMetadata).hiddenStatus || 'visible'
+      }
+    }
+    
+    return migratedMetadata
   } catch (error) {
     console.error('Error reading JIRA metadata from localStorage:', error)
     return {}
@@ -39,7 +53,7 @@ export function getJiraTaskMetadata(taskId: string): JiraTaskMetadata {
   const allMetadata = getAllJiraMetadata()
   return allMetadata[taskId] || {
     id: taskId,
-    hidden: false
+    hiddenStatus: 'visible'
   }
 }
 
@@ -68,10 +82,70 @@ export function updateJiraTaskMetadata(
   saveJiraTaskMetadata(updatedMetadata)
 }
 
-// Toggle hidden status
+// Toggle hidden status (legacy function for backward compatibility)
 export function toggleTaskHidden(taskId: string): void {
   const currentMetadata = getJiraTaskMetadata(taskId)
-  updateJiraTaskMetadata(taskId, { hidden: !currentMetadata.hidden })
+  const newHiddenStatus = currentMetadata.hiddenStatus === 'visible' ? 'hidden' : 'visible'
+  updateJiraTaskMetadata(taskId, { 
+    hiddenStatus: newHiddenStatus,
+    hiddenUntilUpdatedDate: undefined // Clear any "hide until updated" date
+  })
+}
+
+// Set task to permanently hidden
+export function hideTask(taskId: string): void {
+  updateJiraTaskMetadata(taskId, { 
+    hiddenStatus: 'hidden',
+    hiddenUntilUpdatedDate: undefined
+  })
+}
+
+// Set task to hidden until updated
+export function hideTaskUntilUpdated(taskId: string): void {
+  updateJiraTaskMetadata(taskId, { 
+    hiddenStatus: 'hiddenUntilUpdated',
+    hiddenUntilUpdatedDate: new Date().toISOString()
+  })
+}
+
+// Show task (make visible)
+export function showTask(taskId: string): void {
+  updateJiraTaskMetadata(taskId, { 
+    hiddenStatus: 'visible',
+    hiddenUntilUpdatedDate: undefined
+  })
+}
+
+// Check if task should be visible based on hidden status and update timestamps
+export function shouldTaskBeVisible(task: { lastJiraUpdate?: string }, metadata: JiraTaskMetadata): boolean {
+  if (metadata.hiddenStatus === 'visible') {
+    return true
+  }
+  
+  if (metadata.hiddenStatus === 'hidden') {
+    return false
+  }
+  
+  if (metadata.hiddenStatus === 'hiddenUntilUpdated') {
+    // If no lastJiraUpdate, always show (as per user requirement)
+    if (!task.lastJiraUpdate) {
+      return true
+    }
+    
+    // If no hiddenUntilUpdatedDate, show (shouldn't happen, but safety check)
+    if (!metadata.hiddenUntilUpdatedDate) {
+      return true
+    }
+    
+    // Compare timestamps - show if Jira was updated after hiding
+    const jiraUpdateTime = new Date(task.lastJiraUpdate).getTime()
+    const hiddenTime = new Date(metadata.hiddenUntilUpdatedDate).getTime()
+    
+    return jiraUpdateTime > hiddenTime
+  }
+  
+  // Default to visible for any unknown status
+  return true
 }
 
 // Set parent task
@@ -290,6 +364,7 @@ export function updatePRGitStatus(prId: string, gitStatus: LocalGitStatus): void
     console.error('Error updating PR git status:', error)
   }
 }
+
 
 // Clear PR git status
 export function clearPRGitStatus(prId: string): void {

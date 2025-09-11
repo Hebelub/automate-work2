@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { JiraTaskMetadata, getAllJiraMetadata, updateJiraTaskMetadata } from '@/lib/jiraMetadataService'
+import { JiraTaskMetadata, getAllJiraMetadata, updateJiraTaskMetadata, shouldTaskBeVisible } from '@/lib/jiraMetadataService'
 import { TaskWithPRs } from '@/types'
 
 export function useJiraMetadata(tasks: TaskWithPRs[]) {
@@ -20,7 +20,7 @@ export function useJiraMetadata(tasks: TaskWithPRs[]) {
     setMetadata(prev => {
       const existingMetadata = prev[taskId] || {
         id: taskId,
-        hidden: false,
+        hiddenStatus: 'visible' as const,
         childTasksExpanded: true,
         pullRequestsExpanded: true
       }
@@ -36,71 +36,101 @@ export function useJiraMetadata(tasks: TaskWithPRs[]) {
     })
   }
 
+  // Shared sorting function for both root and child tasks
+  const sortTasksByPriority = (tasks: TaskWithPRs[]): TaskWithPRs[] => {
+    return tasks.sort((a, b) => {
+      const aMetadata = metadata[a.id] || { id: a.id, hiddenStatus: 'visible' as const }
+      const bMetadata = metadata[b.id] || { id: b.id, hiddenStatus: 'visible' as const }
+
+      // Use actual visibility logic instead of just hiddenStatus
+      const aVisible = shouldTaskBeVisible(a, aMetadata)
+      const bVisible = shouldTaskBeVisible(b, bMetadata)
+
+      // Priority 1 (top): actually visible tasks
+      // Priority 2 (middle): paused tasks (hiddenUntilUpdated but not yet updated)
+      // Priority 3 (bottom): permanently hidden tasks
+
+      if (aVisible && !bVisible) return -1
+      if (!aVisible && bVisible) return 1
+
+      // If both have same visibility, sort by hiddenStatus for paused vs hidden
+      if (!aVisible && !bVisible) {
+        if (aMetadata.hiddenStatus === 'hiddenUntilUpdated' && bMetadata.hiddenStatus === 'hidden') return -1
+        if (aMetadata.hiddenStatus === 'hidden' && bMetadata.hiddenStatus === 'hiddenUntilUpdated') return 1
+      }
+
+      // If same priority, maintain original order
+      return 0
+    })
+  }
+
   // Function to get tasks with metadata applied
   const getTasksWithMetadata = (): TaskWithPRs[] => {
-    return tasks.map(task => {
+    const processedTasks = tasks.map(task => {
       const taskMetadata = metadata[task.id] || {
         id: task.id,
-        hidden: false,
+        hiddenStatus: 'visible' as const,
         childTasksExpanded: true,
         pullRequestsExpanded: true
       }
       
+      // Apply visibility logic based on new hidden status
+      const isVisible = shouldTaskBeVisible(task, taskMetadata)
+      
+      // Update the task's hiddenStatus to reflect actual visibility
+      const effectiveHiddenStatus = isVisible ? 'visible' : taskMetadata.hiddenStatus
+      
       // Get child tasks by filtering all tasks that have this task as their parent
       const childTasks = tasks
         .filter(childTask => {
-          const childMetadata = metadata[childTask.id] || { id: childTask.id, hidden: false }
+          const childMetadata = metadata[childTask.id] || { id: childTask.id, hiddenStatus: 'visible' as const }
           return childMetadata.parentTaskId === task.id
         })
         .map(childTask => {
           const childMetadata = metadata[childTask.id] || {
             id: childTask.id,
-            hidden: false,
+            hiddenStatus: 'visible' as const,
             childTasksExpanded: true,
             pullRequestsExpanded: true
           }
+          // Apply visibility logic to child tasks too
+          const childIsVisible = shouldTaskBeVisible(childTask, childMetadata)
+          const childEffectiveHiddenStatus = childIsVisible ? 'visible' : childMetadata.hiddenStatus
           return {
             ...childTask,
-            ...childMetadata
+            ...childMetadata,
+            hiddenStatus: childEffectiveHiddenStatus // Use the effective visibility status
           }
         })
-        .sort((a, b) => {
-          // Sort so hidden child tasks appear at the bottom
-          if (a.hidden && !b.hidden) return 1
-          if (!a.hidden && b.hidden) return -1
-          return 0
-        })
+      
+      // Sort child tasks using shared sorting function
+      const sortedChildTasks = sortTasksByPriority(childTasks)
 
       return {
         ...task,
         ...taskMetadata,
-        childTasks: childTasks.length > 0 ? childTasks : undefined
+        hiddenStatus: effectiveHiddenStatus, // Use the effective visibility status
+        childTasks: sortedChildTasks.length > 0 ? sortedChildTasks : undefined
       }
     })
+    
+    // Sort all processed tasks using shared sorting function
+    return sortTasksByPriority(processedTasks)
   }
 
   // Function to get only root tasks (tasks without parents)
   const getRootTasksWithMetadata = (): TaskWithPRs[] => {
-    const allTasksWithMetadata = getTasksWithMetadata()
+    // First, process ALL tasks with metadata
+    const allProcessedTasks = getTasksWithMetadata()
     
-    // Filter out tasks that have a parent (child tasks)
-    const rootTasks = allTasksWithMetadata.filter(task => {
-      const taskMetadata = metadata[task.id] || { id: task.id, hidden: false, childTasksExpanded: true, pullRequestsExpanded: true }
+    // Then filter for root tasks (tasks without parents) from the processed tasks
+    const rootTasks = allProcessedTasks.filter(task => {
+      const taskMetadata = metadata[task.id] || { id: task.id, hiddenStatus: 'visible' as const }
       return !taskMetadata.parentTaskId
     })
     
-    // Sort so hidden tasks appear at the bottom
-    return rootTasks.sort((a, b) => {
-      const aMetadata = metadata[a.id] || { id: a.id, hidden: false }
-      const bMetadata = metadata[b.id] || { id: b.id, hidden: false }
-      
-      // If one is hidden and the other isn't, hidden goes to bottom
-      if (aMetadata.hidden && !bMetadata.hidden) return 1
-      if (!aMetadata.hidden && bMetadata.hidden) return -1
-      
-      // If both have same hidden status, maintain original order
-      return 0
-    })
+    // Sort root tasks using shared sorting function
+    return sortTasksByPriority(rootTasks)
   }
 
   return {

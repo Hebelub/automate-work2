@@ -1,0 +1,20 @@
+# Project Configuration
+# This file helps AI assistants remember project-specific settings
+
+## Package Manager
+PACKAGE_MANAGER=pnpm
+
+## Project Type
+PROJECT_TYPE=nextjs
+
+## Key Commands
+- Install: pnpm install
+- Build: pnpm run build
+- Dev: pnpm run dev
+- Lint: pnpm run lint
+
+## Notes
+- This is a Next.js project with TypeScript
+- Uses pnpm as the package manager (not npm or yarn)
+- Always use pnpm commands for package management
+- I am always running the dev server so it does not need to be ran again

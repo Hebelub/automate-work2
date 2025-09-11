@@ -138,7 +138,15 @@ export async function getTasksWithPRs(selectedRepo?: string): Promise<TaskWithPR
         return {
           ...childTask,
           ...childMetadata,
-          pullRequests: childLinkedPRs
+          pullRequests: childLinkedPRs,
+          // Ensure these fields are available
+          parentTaskId: childMetadata.parentTaskId,
+          notes: childMetadata.notes,
+          hiddenStatus: childMetadata.hiddenStatus,
+          hiddenUntilUpdatedDate: childMetadata.hiddenUntilUpdatedDate,
+          childTasksExpanded: childMetadata.childTasksExpanded,
+          pullRequestsExpanded: childMetadata.pullRequestsExpanded,
+          localBranchesExpanded: childMetadata.localBranchesExpanded
         }
       })
 
@@ -146,7 +154,15 @@ export async function getTasksWithPRs(selectedRepo?: string): Promise<TaskWithPR
         ...task,
         ...metadata,
         pullRequests: linkedPRs,
-        childTasks: childTasks.length > 0 ? childTasks : undefined
+        childTasks: childTasks.length > 0 ? childTasks : undefined,
+        // Ensure these fields are available
+        parentTaskId: metadata.parentTaskId,
+        notes: metadata.notes,
+        hiddenStatus: metadata.hiddenStatus,
+        hiddenUntilUpdatedDate: metadata.hiddenUntilUpdatedDate,
+        childTasksExpanded: metadata.childTasksExpanded,
+        pullRequestsExpanded: metadata.pullRequestsExpanded,
+        localBranchesExpanded: metadata.localBranchesExpanded
       }
     })
 

@@ -13,11 +13,6 @@ const mockJiraTasks: JiraTask[] = [
     priority: "High",
     description: "Create a comprehensive authentication system with JWT tokens and role-based access control.",
     url: "https://jira.company.com/browse/PROJ-123",
-    parentTaskId: undefined,
-    notes: undefined,
-    hidden: false,
-    childTasksExpanded: true,
-    pullRequestsExpanded: true,
   },
   {
     id: "2",
@@ -30,11 +25,6 @@ const mockJiraTasks: JiraTask[] = [
     priority: "Medium",
     description: "Create a responsive dashboard layout that works on all device sizes.",
     url: "https://jira.company.com/browse/PROJ-124",
-    parentTaskId: undefined,
-    notes: undefined,
-    hidden: false,
-    childTasksExpanded: true,
-    pullRequestsExpanded: true,
   },
   {
     id: "3",
@@ -47,11 +37,6 @@ const mockJiraTasks: JiraTask[] = [
     priority: "Critical",
     description: "Address the SQL injection vulnerability in the user input validation.",
     url: "https://jira.company.com/browse/PROJ-125",
-    parentTaskId: undefined,
-    notes: undefined,
-    hidden: false,
-    childTasksExpanded: true,
-    pullRequestsExpanded: true,
   },
   {
     id: "4",
@@ -64,11 +49,6 @@ const mockJiraTasks: JiraTask[] = [
     priority: "Low",
     description: "Implement comprehensive unit tests for all API endpoints.",
     url: "https://jira.company.com/browse/PROJ-126",
-    parentTaskId: undefined,
-    notes: undefined,
-    hidden: false,
-    childTasksExpanded: true,
-    pullRequestsExpanded: true,
   },
   {
     id: "5",
@@ -81,11 +61,6 @@ const mockJiraTasks: JiraTask[] = [
     priority: "High",
     description: "Optimize slow database queries to improve application performance.",
     url: "https://jira.company.com/browse/PROJ-127",
-    parentTaskId: undefined,
-    notes: undefined,
-    hidden: false,
-    childTasksExpanded: true,
-    pullRequestsExpanded: true,
   }
 ]
 

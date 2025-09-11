@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ExternalLink, GitPullRequest, Clock, User, CheckCircle, AlertCircle, Circle } from 'lucide-react'
+import { formatTimeSince } from '@/lib/utils'
 
 // Helper functions for read tracking
 const getReadPRs = (): Set<string> => {
@@ -35,24 +36,6 @@ const markAllAsRead = (prs: ReviewGitHubPR[]) => {
   }
 }
 
-// Function to format time since creation
-const formatTimeSince = (createdAt: string): string => {
-  const now = new Date()
-  const created = new Date(createdAt)
-  const diffMs = now.getTime() - created.getTime()
-  
-  const minutes = Math.floor(diffMs / (1000 * 60))
-  const hours = Math.floor(diffMs / (1000 * 60 * 60))
-  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-  
-  if (minutes < 60) {
-    return `${minutes}m`
-  } else if (hours < 24) {
-    return `${hours}h`
-  } else {
-    return `${days}d`
-  }
-}
 
 interface ReviewInboxProps {
   prs: ReviewGitHubPR[]
@@ -139,16 +122,13 @@ export function ReviewInbox({
   if (prs.length === 0) {
     return (
       <Card className="mb-6">
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-6">
           <CardTitle className="flex items-center gap-2 text-lg">
             <GitPullRequest className="h-5 w-5 text-green-600" />
             Review Inbox
             <Badge variant="secondary" className="ml-2">0</Badge>
           </CardTitle>
         </CardHeader>
-        <CardContent className="pb-6">
-          <p className="text-sm text-gray-600">🎉 No PRs need your review right now!</p>
-        </CardContent>
       </Card>
     )
   }

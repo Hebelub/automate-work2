@@ -4,19 +4,21 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PullRequestCard } from "@/components/PullRequestCard"
 import { LocalBranches } from "@/components/LocalBranches"
 import { CreateBranchSection } from "@/components/CreateBranchSection"
-import { ExternalLink, Clock, User, AlertTriangle, Copy, Check, Eye, EyeOff, X, Globe, Link, FileText, GripVertical, ChevronDown, ChevronRight, RefreshCw, GitBranch } from "lucide-react"
+import { ExternalLink, Clock, Copy, Check, Eye, EyeOff, X, FileText, GripVertical, ChevronDown, ChevronRight, GitBranch, Pause, Play } from "lucide-react"
 import { useState, useRef, useEffect } from "react"
-import { toggleTaskHidden, setTaskNotes, setTaskParent, wouldCreateLoop } from "@/lib/jiraMetadataService"
+import { toggleTaskHidden, setTaskNotes, setTaskParent, wouldCreateLoop, hideTask, hideTaskUntilUpdated, showTask } from "@/lib/jiraMetadataService"
 import { usePRMetadata } from "@/hooks/usePRMetadata"
 import { useBulkGitStatus } from "@/hooks/useBulkGitStatus"
+import { formatTimeSince } from "@/lib/utils"
 
 interface JiraTaskCardProps {
   task: TaskWithPRs
-  onUpdateMetadata: (taskId: string, updates: Partial<{ parentTaskId?: string; notes?: string; hidden: boolean; childTasksExpanded?: boolean; pullRequestsExpanded?: boolean; localBranchesExpanded?: boolean }>) => void
+  onUpdateMetadata: (taskId: string, updates: Partial<{ parentTaskId?: string; notes?: string; hiddenStatus?: 'visible' | 'hidden' | 'hiddenUntilUpdated'; hiddenUntilUpdatedDate?: string; childTasksExpanded?: boolean; pullRequestsExpanded?: boolean; localBranchesExpanded?: boolean }>) => void
 }
 
 export function JiraTaskCard({ task, onUpdateMetadata }: JiraTaskCardProps) {
   const [copiedTaskKey, setCopiedTaskKey] = useState(false)
+  const [copiedUrl, setCopiedUrl] = useState(false)
   const [notes, setNotes] = useState(task.notes || '')
   const [isDragging, setIsDragging] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
@@ -39,10 +41,38 @@ export function JiraTaskCard({ task, onUpdateMetadata }: JiraTaskCardProps) {
     })
   }
 
-  const handleToggleHidden = () => {
-    const newHidden = !task.hidden
-    toggleTaskHidden(task.id)
-    onUpdateMetadata(task.id, { hidden: newHidden })
+  const handleCopyUrl = () => {
+    navigator.clipboard.writeText(task.url).then(() => {
+      setCopiedUrl(true)
+      setTimeout(() => setCopiedUrl(false), 2000)
+    }).catch(() => {
+      // Handle error if copying fails
+    })
+  }
+
+  const handleHideTask = () => {
+    hideTask(task.id)
+    onUpdateMetadata(task.id, { 
+      hiddenStatus: 'hidden',
+      hiddenUntilUpdatedDate: undefined
+    })
+  }
+
+  const handleHideUntilUpdated = () => {
+    const hiddenDate = new Date().toISOString()
+    hideTaskUntilUpdated(task.id)
+    onUpdateMetadata(task.id, { 
+      hiddenStatus: 'hiddenUntilUpdated',
+      hiddenUntilUpdatedDate: hiddenDate
+    })
+  }
+
+  const handleShowTask = () => {
+    showTask(task.id)
+    onUpdateMetadata(task.id, { 
+      hiddenStatus: 'visible',
+      hiddenUntilUpdatedDate: undefined
+    })
   }
 
   const handleNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -181,21 +211,53 @@ export function JiraTaskCard({ task, onUpdateMetadata }: JiraTaskCardProps) {
   }
 
   // If task is hidden, show compact version
-  if (task.hidden) {
+  if (task.hiddenStatus !== 'visible') {
+    // Determine which icon to show based on hidden status
+    const getHiddenIcon = () => {
+      if (task.hiddenStatus === 'hiddenUntilUpdated') {
+        return <Play className="h-4 w-4" />
+      } else {
+        return <Eye className="h-4 w-4" />
+      }
+    }
+    
+    const getHiddenTooltip = () => {
+      if (task.hiddenStatus === 'hiddenUntilUpdated') {
+        return "Show task (hidden until updated)"
+      } else {
+        return "Show task"
+      }
+    }
+
     return (
       <div className="flex items-center gap-2 p-2 bg-gray-50 rounded border text-sm">
         <button
-          onClick={handleToggleHidden}
+          onClick={handleShowTask}
           className="text-gray-500 hover:text-gray-700 transition-colors"
-          title="Show task"
+          title={getHiddenTooltip()}
         >
-          <Eye className="h-4 w-4" />
+          {getHiddenIcon()}
         </button>
         <span className="font-mono text-gray-600">{task.key}</span>
+        <button
+          onClick={handleCopyUrl}
+          className="text-gray-400 hover:text-gray-600 transition-colors"
+          title="Copy Jira URL"
+        >
+          {copiedUrl ? <Check className="h-3 w-3 text-green-600" /> : <ExternalLink className="h-3 w-3" />}
+        </button>
         <span className="text-gray-800 truncate">{task.name}</span>
         <Badge className={getStatusColor(task.status)}>
           {task.status}
         </Badge>
+        {task.lastJiraUpdate && (
+          <div className="flex items-center gap-1 text-xs text-gray-500">
+            <Clock className="h-3 w-3" />
+            <span title={`Last updated: ${new Date(task.lastJiraUpdate).toLocaleString()}`}>
+              {formatTimeSince(task.lastJiraUpdate)} ago
+            </span>
+          </div>
+        )}
       </div>
     )
   }
@@ -220,6 +282,13 @@ export function JiraTaskCard({ task, onUpdateMetadata }: JiraTaskCardProps) {
               >
                 {copiedTaskKey ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
               </button>
+              <button
+                onClick={handleCopyUrl}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+                title="Copy Jira URL"
+              >
+                {copiedUrl ? <Check className="h-3 w-3 text-green-600" /> : <ExternalLink className="h-3 w-3" />}
+              </button>
               
               <Badge className={getStatusColor(task.status)}>
                 {task.status}
@@ -237,6 +306,15 @@ export function JiraTaskCard({ task, onUpdateMetadata }: JiraTaskCardProps) {
                   <Clock className="h-3 w-3 mr-1" />
                   Not in Sprint
                 </Badge>
+              )}
+              
+              {task.lastJiraUpdate && (
+                <div className="flex items-center gap-1 text-xs text-gray-500">
+                  <Clock className="h-3 w-3" />
+                  <span title={`Last updated: ${new Date(task.lastJiraUpdate).toLocaleString()}`}>
+                    {formatTimeSince(task.lastJiraUpdate)} ago
+                  </span>
+                </div>
               )}
             </div>
             
@@ -279,14 +357,33 @@ export function JiraTaskCard({ task, onUpdateMetadata }: JiraTaskCardProps) {
               </button>
             )}
 
-            {/* Hide/Show Button */}
-            <button
-              onClick={handleToggleHidden}
-              className="text-gray-500 hover:text-gray-700 transition-colors"
-              title="Hide task"
-            >
-              <EyeOff className="h-4 w-4" />
-            </button>
+            {/* Hide/Show Buttons */}
+            {task.hiddenStatus === 'visible' ? (
+              <>
+                <button
+                  onClick={handleHideTask}
+                  className="text-gray-500 hover:text-gray-700 transition-colors"
+                  title="Hide task permanently"
+                >
+                  <EyeOff className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={handleHideUntilUpdated}
+                  className="text-gray-500 hover:text-gray-700 transition-colors"
+                  title="Hide until updated"
+                >
+                  <Pause className="h-4 w-4" />
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={handleShowTask}
+                className="text-gray-500 hover:text-gray-700 transition-colors"
+                title="Show task"
+              >
+                <Eye className="h-4 w-4" />
+              </button>
+            )}
 
             {/* External Link */}
             <a
@@ -395,10 +492,6 @@ export function JiraTaskCard({ task, onUpdateMetadata }: JiraTaskCardProps) {
           {/* Create New Branch - only show if no local branches and no PRs */}
           {(!task.localBranches || task.localBranches.length === 0) && task.pullRequests.length === 0 && (
             <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
-                <GitBranch className="h-4 w-4" />
-                Create New Branch
-              </div>
               <CreateBranchSection 
                 taskKey={task.key}
                 taskName={task.name}

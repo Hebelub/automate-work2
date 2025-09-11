@@ -15,9 +15,19 @@ interface PullRequestCardProps {
 
 export function PullRequestCard({ pr, onUpdateMetadata, taskStatus }: PullRequestCardProps) {
   // Local git status is now fetched in bulk by the parent component
+  const [copiedUrl, setCopiedUrl] = useState(false)
 
   const handleToggleHidden = () => {
     onUpdateMetadata(pr.id, { hidden: !pr.hidden })
+  }
+
+  const handleCopyUrl = () => {
+    navigator.clipboard.writeText(pr.url).then(() => {
+      setCopiedUrl(true)
+      setTimeout(() => setCopiedUrl(false), 2000)
+    }).catch(() => {
+      // Handle error if copying fails
+    })
   }
 
 
@@ -125,6 +135,13 @@ export function PullRequestCard({ pr, onUpdateMetadata, taskStatus }: PullReques
               title="Hide PR details"
             >
               <EyeOff className="h-4 w-4" />
+            </button>
+            <button
+              onClick={handleCopyUrl}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+              title="Copy PR URL"
+            >
+              {copiedUrl ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
             </button>
             <a
               href={pr.url}

@@ -53,14 +53,16 @@ function getStatusPriority(status: string): number {
       return 3
     case 'qa':
       return 4
-    case 'on hold':
+    case 'review':
       return 5
-    case 'done':
+    case 'on hold':
       return 6
-    case 'rejected':
+    case 'done':
       return 7
+    case 'rejected':
+      return 8
     default:
-      return 8 // Unknown status goes to bottom
+      return 9 // Unknown status goes to bottom
   }
 }
 
@@ -119,14 +121,35 @@ function getPriorityValue(priority: string): number {
  * @param tasks - Array of tasks to sort
  * @returns Sorted array of tasks
  */
-export function sortTasksByPriority<T extends { status: string; issueType: string; priority?: string; hidden?: boolean }>(tasks: T[]): T[] {
+export function sortTasksByPriority<T extends { status: string; issueType: string; priority?: string; hiddenStatus?: 'visible' | 'hidden' | 'hiddenUntilUpdated'; lastJiraUpdate?: string; hiddenUntilUpdatedDate?: string }>(tasks: T[]): T[] {
   return [...tasks].sort((a, b) => {
-    // First, compare by hidden status - hidden tasks go to bottom
-    const hiddenA = a.hidden ? 1 : 0
-    const hiddenB = b.hidden ? 1 : 0
+    // First, compare by actual visibility - hidden tasks go to bottom
+    const isTaskVisible = (task: T) => {
+      if (task.hiddenStatus === 'visible') return true
+      if (task.hiddenStatus === 'hidden') return false
+      if (task.hiddenStatus === 'hiddenUntilUpdated') {
+        // If no lastJiraUpdate, always show (as per user requirement)
+        if (!task.lastJiraUpdate) return true
+        // If no hiddenUntilUpdatedDate, show (safety check)
+        if (!task.hiddenUntilUpdatedDate) return true
+        // Compare timestamps - show if Jira was updated after hiding
+        const jiraUpdateTime = new Date(task.lastJiraUpdate).getTime()
+        const hiddenTime = new Date(task.hiddenUntilUpdatedDate).getTime()
+        return jiraUpdateTime > hiddenTime
+      }
+      return true // Default to visible for unknown status
+    }
     
-    if (hiddenA !== hiddenB) {
-      return hiddenA - hiddenB
+    const aVisible = isTaskVisible(a)
+    const bVisible = isTaskVisible(b)
+    
+    if (aVisible && !bVisible) return -1
+    if (!aVisible && bVisible) return 1
+    
+    // If both have same visibility, sort by hiddenStatus for paused vs hidden
+    if (!aVisible && !bVisible) {
+      if (a.hiddenStatus === 'hiddenUntilUpdated' && b.hiddenStatus === 'hidden') return -1
+      if (a.hiddenStatus === 'hidden' && b.hiddenStatus === 'hiddenUntilUpdated') return 1
     }
     
     // If both have same hidden status, compare by status priority
@@ -151,4 +174,27 @@ export function sortTasksByPriority<T extends { status: string; issueType: strin
     
     return typeA - typeB
   })
+}
+
+/**
+ * Formats a timestamp to show relative time (e.g., "2m", "3h", "5d")
+ * @param createdAt - ISO timestamp string
+ * @returns Formatted relative time string
+ */
+export function formatTimeSince(createdAt: string): string {
+  const now = new Date()
+  const created = new Date(createdAt)
+  const diffMs = now.getTime() - created.getTime()
+  
+  const minutes = Math.floor(diffMs / (1000 * 60))
+  const hours = Math.floor(diffMs / (1000 * 60 * 60))
+  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+  
+  if (minutes < 60) {
+    return `${minutes}m`
+  } else if (hours < 24) {
+    return `${hours}h`
+  } else {
+    return `${days}d`
+  }
 }
