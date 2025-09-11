@@ -5,6 +5,7 @@ import { PullRequestCard } from "@/components/PullRequestCard"
 import { LocalBranches } from "@/components/LocalBranches"
 import { CreateBranchSection } from "@/components/CreateBranchSection"
 import { ExternalLink, Clock, Copy, Check, Eye, EyeOff, X, FileText, GripVertical, ChevronDown, ChevronRight, GitBranch, Pause, Play } from "lucide-react"
+import { CopyButton } from "@/components/ui/copy-button"
 import { useState, useRef, useEffect } from "react"
 import { toggleTaskHidden, setTaskNotes, setTaskParent, wouldCreateLoop, hideTask, hideTaskUntilUpdated, showTask } from "@/lib/jiraMetadataService"
 import { usePRMetadata } from "@/hooks/usePRMetadata"
@@ -17,8 +18,6 @@ interface JiraTaskCardProps {
 }
 
 export function JiraTaskCard({ task, onUpdateMetadata }: JiraTaskCardProps) {
-  const [copiedTaskKey, setCopiedTaskKey] = useState(false)
-  const [copiedUrl, setCopiedUrl] = useState(false)
   const [notes, setNotes] = useState(task.notes || '')
   const [isDragging, setIsDragging] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
@@ -32,23 +31,6 @@ export function JiraTaskCard({ task, onUpdateMetadata }: JiraTaskCardProps) {
   // Bulk git status fetching hook
   const { isLoading: isLoadingGitStatus } = useBulkGitStatus(task.pullRequests, updatePRMetadata)
 
-  const handleCopyTaskKey = () => {
-    navigator.clipboard.writeText(task.key).then(() => {
-      setCopiedTaskKey(true)
-      setTimeout(() => setCopiedTaskKey(false), 2000)
-    }).catch(() => {
-      // Handle error if copying fails
-    })
-  }
-
-  const handleCopyUrl = () => {
-    navigator.clipboard.writeText(task.url).then(() => {
-      setCopiedUrl(true)
-      setTimeout(() => setCopiedUrl(false), 2000)
-    }).catch(() => {
-      // Handle error if copying fails
-    })
-  }
 
   const handleHideTask = () => {
     hideTask(task.id)
@@ -239,13 +221,13 @@ export function JiraTaskCard({ task, onUpdateMetadata }: JiraTaskCardProps) {
           {getHiddenIcon()}
         </button>
         <span className="font-mono text-gray-600">{task.key}</span>
-        <button
-          onClick={handleCopyUrl}
+        <CopyButton
+          textToCopy={task.url}
+          tooltip="Copy Jira URL"
+          icon={<ExternalLink className="h-3 w-3" />}
           className="text-gray-400 hover:text-gray-600 transition-colors"
-          title="Copy Jira URL"
-        >
-          {copiedUrl ? <Check className="h-3 w-3 text-green-600" /> : <ExternalLink className="h-3 w-3" />}
-        </button>
+          successIcon={<Check className="h-3 w-3 text-green-600" />}
+        />
         <span className="text-gray-800 truncate">{task.name}</span>
         <Badge className={getStatusColor(task.status)}>
           {task.status}
@@ -275,20 +257,20 @@ export function JiraTaskCard({ task, onUpdateMetadata }: JiraTaskCardProps) {
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-3">
               <span className="text-sm font-mono text-gray-600">{task.key}</span>
-              <button
-                onClick={handleCopyTaskKey}
+              <CopyButton
+                textToCopy={task.key}
+                tooltip="Copy task key"
+                icon={<Copy className="h-3 w-3" />}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
-                title="Copy task key"
-              >
-                {copiedTaskKey ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
-              </button>
-              <button
-                onClick={handleCopyUrl}
+                successIcon={<Check className="h-3 w-3 text-green-600" />}
+              />
+              <CopyButton
+                textToCopy={task.url}
+                tooltip="Copy Jira URL"
+                icon={<ExternalLink className="h-3 w-3" />}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
-                title="Copy Jira URL"
-              >
-                {copiedUrl ? <Check className="h-3 w-3 text-green-600" /> : <ExternalLink className="h-3 w-3" />}
-              </button>
+                successIcon={<Check className="h-3 w-3 text-green-600" />}
+              />
               
               <Badge className={getStatusColor(task.status)}>
                 {task.status}

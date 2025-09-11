@@ -2,6 +2,7 @@ import { GitHubPR, LocalBranch } from "@/types"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ExternalLink, GitBranch, User, GitPullRequest, CheckCircle, Clock, AlertCircle, Users, Copy, Check, Eye, EyeOff } from "lucide-react"
+import { CopyButton } from "@/components/ui/copy-button"
 import { useState } from "react"
 import { PullRequestMetadata } from "@/lib/jiraMetadataService"
 import { LocalBranches } from "@/components/LocalBranches"
@@ -15,19 +16,9 @@ interface PullRequestCardProps {
 
 export function PullRequestCard({ pr, onUpdateMetadata, taskStatus }: PullRequestCardProps) {
   // Local git status is now fetched in bulk by the parent component
-  const [copiedUrl, setCopiedUrl] = useState(false)
 
   const handleToggleHidden = () => {
     onUpdateMetadata(pr.id, { hidden: !pr.hidden })
-  }
-
-  const handleCopyUrl = () => {
-    navigator.clipboard.writeText(pr.url).then(() => {
-      setCopiedUrl(true)
-      setTimeout(() => setCopiedUrl(false), 2000)
-    }).catch(() => {
-      // Handle error if copying fails
-    })
   }
 
 
@@ -136,13 +127,13 @@ export function PullRequestCard({ pr, onUpdateMetadata, taskStatus }: PullReques
             >
               <EyeOff className="h-4 w-4" />
             </button>
-            <button
-              onClick={handleCopyUrl}
+            <CopyButton
+              textToCopy={pr.url}
+              tooltip="Copy PR URL"
+              icon={<Copy className="h-4 w-4" />}
               className="text-gray-400 hover:text-gray-600 transition-colors"
-              title="Copy PR URL"
-            >
-              {copiedUrl ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
-            </button>
+              successIcon={<Check className="h-4 w-4 text-green-600" />}
+            />
             <a
               href={pr.url}
               target="_blank"
