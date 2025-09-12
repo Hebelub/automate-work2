@@ -94,20 +94,21 @@ export function PullRequestCard({ pr, onUpdateMetadata, taskStatus }: PullReques
         >
           <Eye className="h-4 w-4" />
         </button>
-        <GitPullRequest className="h-3 w-3 text-gray-500" />
-        <span className="font-mono text-gray-600">{pr.repository}</span>
-        <span className="text-gray-800 truncate">{pr.branch}</span>
-        <Badge variant="outline" className={`text-xs ${getStatusColor(pr.status)}`}>
-          {pr.status}
-        </Badge>
         <a
           href={pr.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-gray-500 hover:text-gray-700 transition-colors ml-auto"
+          className="text-xs font-mono text-gray-500 hover:text-blue-600 hover:underline transition-colors"
+          title="Open PR in GitHub"
         >
-          <ExternalLink className="h-3 w-3" />
+          #{pr.number}
         </a>
+        <Badge variant="outline" className={`text-xs ${getStatusColor(pr.status)}`}>
+          {pr.status}
+        </Badge>
+        <GitPullRequest className="h-3 w-3 text-gray-500" />
+        <span className="font-mono text-gray-600">{pr.repository}</span>
+        <span className="text-gray-800 truncate">{pr.branch}</span>
       </div>
     )
   }
@@ -116,9 +117,32 @@ export function PullRequestCard({ pr, onUpdateMetadata, taskStatus }: PullReques
     <Card className="hover:shadow-md transition-shadow">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
-          <CardTitle className="text-sm font-medium line-clamp-2">
-            {pr.title}
-          </CardTitle>
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <a
+                href={pr.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs font-mono text-gray-500 hover:text-blue-600 hover:underline transition-colors"
+                title="Open PR in GitHub"
+              >
+                #{pr.number}
+              </a>
+              <CopyButton
+                textToCopy={pr.url}
+                tooltip="Copy PR URL"
+                icon={<Copy className="h-3 w-3" />}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+                successIcon={<Check className="h-3 w-3 text-green-600" />}
+              />
+              <Badge className={getStatusColor(pr.status)}>
+                {pr.status === 'open' && pr.isDraft ? 'Draft' : pr.status}
+              </Badge>
+            </div>
+            <CardTitle className="text-sm font-medium line-clamp-2">
+              {pr.title}
+            </CardTitle>
+          </div>
           <div className="flex items-center gap-2">
             <button
               onClick={handleToggleHidden}
@@ -127,35 +151,17 @@ export function PullRequestCard({ pr, onUpdateMetadata, taskStatus }: PullReques
             >
               <EyeOff className="h-4 w-4" />
             </button>
-            <CopyButton
-              textToCopy={pr.url}
-              tooltip="Copy PR URL"
-              icon={<Copy className="h-4 w-4" />}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
-              successIcon={<Check className="h-4 w-4 text-green-600" />}
-            />
-            <a
-              href={pr.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-gray-500 hover:text-gray-700 transition-colors"
-            >
-              <ExternalLink className="h-4 w-4" />
-            </a>
           </div>
         </div>
       </CardHeader>
       <CardContent className="pt-0">
         <div className="space-y-3">
-          {/* Repository, Branch and Status */}
+          {/* Repository and Branch */}
           <div className="flex items-center justify-between">
             <RepositoryBranchInfo 
               repository={pr.repository}
               branch={pr.branch}
             />
-            <Badge className={getStatusColor(pr.status)}>
-              #{pr.number} • {pr.status === 'open' && pr.isDraft ? 'Draft' : pr.status}
-            </Badge>
           </div>
 
           {/* Local Git Status - Only show if branch exists locally */}
