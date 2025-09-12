@@ -17,9 +17,10 @@ import { formatTimeSince } from "@/lib/utils"
 interface JiraTaskCardProps {
   task: TaskWithPRs
   onUpdateMetadata: (taskId: string, updates: Partial<{ parentTaskId?: string; notes?: string; hiddenStatus?: 'visible' | 'hidden' | 'hiddenUntilUpdated'; hiddenUntilUpdatedDate?: string; childTasksExpanded?: boolean; pullRequestsExpanded?: boolean; localBranchesExpanded?: boolean }>) => void
+  showHiddenItems?: boolean
 }
 
-export function JiraTaskCard({ task, onUpdateMetadata }: JiraTaskCardProps) {
+export function JiraTaskCard({ task, onUpdateMetadata, showHiddenItems = false }: JiraTaskCardProps) {
   const [notes, setNotes] = useState(task.notes || '')
   const [isDragging, setIsDragging] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
@@ -419,28 +420,39 @@ export function JiraTaskCard({ task, onUpdateMetadata }: JiraTaskCardProps) {
           )}
 
           {/* Child Tasks */}
-          {task.childTasks && task.childTasks.length > 0 && (
-            <div className="space-y-2">
-              <button
-                onClick={handleToggleChildTasks}
-                className="flex items-center gap-2 text-sm font-medium text-gray-900 hover:text-gray-700 transition-colors"
-              >
-                {task.childTasksExpanded ? (
-                  <ChevronDown className="h-4 w-4" />
-                ) : (
-                  <ChevronRight className="h-4 w-4" />
+          {task.childTasks && task.childTasks.length > 0 && (() => {
+            const visibleChildTasks = showHiddenItems 
+              ? task.childTasks 
+              : task.childTasks.filter(childTask => childTask.hiddenStatus === 'visible');
+            
+            return visibleChildTasks.length > 0 && (
+              <div className="space-y-2">
+                <button
+                  onClick={handleToggleChildTasks}
+                  className="flex items-center gap-2 text-sm font-medium text-gray-900 hover:text-gray-700 transition-colors"
+                >
+                  {task.childTasksExpanded ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
+                  Child Tasks ({visibleChildTasks.length}{!showHiddenItems && task.childTasks.length > visibleChildTasks.length ? ` of ${task.childTasks.length}` : ''})
+                </button>
+                {task.childTasksExpanded && (
+                  <div className="space-y-1">
+                    {visibleChildTasks.map((childTask) => (
+                      <JiraTaskCard 
+                        key={childTask.id} 
+                        task={childTask} 
+                        onUpdateMetadata={onUpdateMetadata}
+                        showHiddenItems={showHiddenItems}
+                      />
+                    ))}
+                  </div>
                 )}
-                Child Tasks ({task.childTasks.length})
-              </button>
-              {task.childTasksExpanded && (
-                <div className="space-y-1">
-                  {task.childTasks.map((childTask) => (
-                    <JiraTaskCard key={childTask.id} task={childTask} onUpdateMetadata={onUpdateMetadata} />
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+              </div>
+            );
+          })()}
 
           {/* Local Branches */}
           {task.localBranches && task.localBranches.length > 0 && (
@@ -463,29 +475,36 @@ export function JiraTaskCard({ task, onUpdateMetadata }: JiraTaskCardProps) {
             </div>
           )}
 
-          {task.pullRequests.length > 0 && (
-            <div className="space-y-2">
-              <button
-                onClick={handleTogglePullRequests}
-                className="flex items-center gap-2 text-sm font-medium text-gray-900 hover:text-gray-700 transition-colors"
-              >
-                {task.pullRequestsExpanded ? (
-                  <ChevronDown className="h-4 w-4" />
-                ) : (
-                  <ChevronRight className="h-4 w-4" />
+          {task.pullRequests.length > 0 && (() => {
+            const allPRs = getPRsSortedByVisibility();
+            const visiblePRs = showHiddenItems 
+              ? allPRs 
+              : allPRs.filter(pr => !pr.hidden);
+            
+            return visiblePRs.length > 0 && (
+              <div className="space-y-2">
+                <button
+                  onClick={handleTogglePullRequests}
+                  className="flex items-center gap-2 text-sm font-medium text-gray-900 hover:text-gray-700 transition-colors"
+                >
+                  {task.pullRequestsExpanded ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
+                  Pull Requests ({visiblePRs.length}{!showHiddenItems && allPRs.length > visiblePRs.length ? ` of ${allPRs.length}` : ''})
+                </button>
+                
+                {task.pullRequestsExpanded && (
+                  <div className="space-y-2">
+                    {visiblePRs.map((pr) => (
+                      <PullRequestCard key={pr.id} pr={pr} onUpdateMetadata={updatePRMetadata} taskStatus={task.status} />
+                    ))}
+                  </div>
                 )}
-                Pull Requests ({task.pullRequests.length})
-              </button>
-              
-              {task.pullRequestsExpanded && (
-                <div className="space-y-2">
-                  {getPRsSortedByVisibility().map((pr) => (
-                    <PullRequestCard key={pr.id} pr={pr} onUpdateMetadata={updatePRMetadata} taskStatus={task.status} />
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+              </div>
+            );
+          })()}
 
           {/* Create New Branch - only show if no local branches and no PRs */}
           {(!task.localBranches || task.localBranches.length === 0) && task.pullRequests.length === 0 && (

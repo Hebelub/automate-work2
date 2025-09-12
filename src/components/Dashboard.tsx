@@ -20,6 +20,8 @@ import {
   AlertTriangle,
   Clock,
   Search,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { useJiraMetadata } from "@/hooks/useJiraMetadata";
 
@@ -29,6 +31,15 @@ export function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [searchText, setSearchText] = useState<string>("");
   const [refreshing, setRefreshing] = useState(false);
+  const [showHiddenItems, setShowHiddenItems] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const stored = localStorage.getItem('show-hidden-items');
+      return stored ? JSON.parse(stored) : false;
+    } catch {
+      return false;
+    }
+  });
   const [githubRateLimit, setGithubRateLimit] = useState<{
     remaining: number;
     limit: number;
@@ -61,6 +72,17 @@ export function Dashboard() {
   // Function to update task metadata
   const updateTaskMetadata = (taskId: string, updates: Partial<{ parentTaskId?: string; notes?: string; hiddenStatus?: 'visible' | 'hidden' | 'hiddenUntilUpdated'; hiddenUntilUpdatedDate?: string; childTasksExpanded?: boolean; pullRequestsExpanded?: boolean; localBranchesExpanded?: boolean }>) => {
     updateMetadata(taskId, updates);
+  };
+
+  // Function to toggle show/hide hidden items
+  const toggleShowHiddenItems = () => {
+    const newValue = !showHiddenItems;
+    setShowHiddenItems(newValue);
+    try {
+      localStorage.setItem('show-hidden-items', JSON.stringify(newValue));
+    } catch (error) {
+      console.error('Error saving show-hidden-items to localStorage:', error);
+    }
   };
 
 
@@ -249,7 +271,13 @@ export function Dashboard() {
 
   // Get root tasks with metadata applied, filter, and sort by priority
   const rootTasksWithMetadata = getRootTasksWithMetadata();
-  const filteredTasks = searchTasks(rootTasksWithMetadata, searchText);
+  
+  // Apply visibility filtering based on toggle state
+  const visibilityFilteredTasks = showHiddenItems 
+    ? rootTasksWithMetadata 
+    : rootTasksWithMetadata.filter(task => task.hiddenStatus === 'visible');
+  
+  const filteredTasks = searchTasks(visibilityFilteredTasks, searchText);
   const sortedTasks = sortTasksByPriority(filteredTasks);
 
   const totalPRs = tasks.reduce(
@@ -368,6 +396,16 @@ export function Dashboard() {
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleShowHiddenItems}
+              className={`flex items-center gap-2 ${showHiddenItems ? 'bg-gray-100 text-gray-700' : 'text-gray-500'}`}
+              title={showHiddenItems ? 'Hide hidden items' : 'Show hidden items'}
+            >
+              {showHiddenItems ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              {showHiddenItems ? 'Hide Hidden' : 'Show Hidden'}
+            </Button>
             {searchText && (
               <Button
                 variant="outline"
@@ -379,9 +417,14 @@ export function Dashboard() {
               </Button>
             )}
           </div>
-          {searchText && (
+          {(searchText || !showHiddenItems) && (
             <div className="mt-2 text-sm text-gray-600">
-              Showing {filteredTasks.length} of {tasks.length} tasks
+              Showing {filteredTasks.length} of {showHiddenItems ? tasks.length : rootTasksWithMetadata.filter(task => task.hiddenStatus === 'visible').length} tasks
+              {!showHiddenItems && rootTasksWithMetadata.some(task => task.hiddenStatus !== 'visible') && (
+                <span className="ml-2 text-gray-500">
+                  ({rootTasksWithMetadata.filter(task => task.hiddenStatus !== 'visible').length} hidden)
+                </span>
+              )}
             </div>
           )}
         </div>
@@ -419,7 +462,12 @@ export function Dashboard() {
         {sortedTasks.length > 0 ? (
           <div className="grid grid-cols-1 gap-6">
             {sortedTasks.map((task) => (
-              <JiraTaskCard key={task.id} task={task} onUpdateMetadata={updateTaskMetadata} />
+              <JiraTaskCard 
+                key={task.id} 
+                task={task} 
+                onUpdateMetadata={updateTaskMetadata}
+                showHiddenItems={showHiddenItems}
+              />
             ))}
           </div>
         ) : (
