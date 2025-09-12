@@ -220,14 +220,15 @@ export function JiraTaskCard({ task, onUpdateMetadata }: JiraTaskCardProps) {
         >
           {getHiddenIcon()}
         </button>
-        <span className="font-mono text-gray-600">{task.key}</span>
-        <CopyButton
-          textToCopy={task.url}
-          tooltip="Copy Jira URL"
-          icon={<ExternalLink className="h-3 w-3" />}
-          className="text-gray-400 hover:text-gray-600 transition-colors"
-          successIcon={<Check className="h-3 w-3 text-green-600" />}
-        />
+        <a 
+          href={task.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-mono text-gray-600 hover:text-blue-600 hover:underline transition-colors"
+          title="Open in Jira"
+        >
+          {task.key}
+        </a>
         <span className="text-gray-800 truncate">{task.name}</span>
         <Badge className={getStatusColor(task.status)}>
           {task.status}
@@ -256,7 +257,15 @@ export function JiraTaskCard({ task, onUpdateMetadata }: JiraTaskCardProps) {
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-3">
-              <span className="text-sm font-mono text-gray-600">{task.key}</span>
+              <a 
+                href={task.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm font-mono text-gray-600 hover:text-blue-600 hover:underline transition-colors"
+                title="Open in Jira"
+              >
+                {task.key}
+              </a>
               <CopyButton
                 textToCopy={task.key}
                 tooltip="Copy task key"
@@ -305,18 +314,7 @@ export function JiraTaskCard({ task, onUpdateMetadata }: JiraTaskCardProps) {
             </CardTitle>
           </div>
           
-          <div className="flex items-center gap-2">
-            {/* Drag Handle */}
-            <div
-              className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 transition-colors"
-              draggable
-              onDragStart={handleDragStart}
-              onDragEnd={handleDragEnd}
-              title="Drag to set parent"
-            >
-              <GripVertical className="h-4 w-4" />
-            </div>
-            
+          <div className="flex items-center gap-2">            
             {/* Detach Parent Button - only show if task has a parent */}
             {task.parentTaskId && (
               <button
@@ -367,15 +365,16 @@ export function JiraTaskCard({ task, onUpdateMetadata }: JiraTaskCardProps) {
               </button>
             )}
 
-            {/* External Link */}
-            <a
-              href={task.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-gray-500 hover:text-gray-700 transition-colors"
+            {/* Drag Handle */}
+            <div
+              className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 transition-colors"
+              draggable
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+              title="Drag to set parent"
             >
-              <ExternalLink className="h-4 w-4" />
-            </a>
+              <GripVertical className="h-4 w-4" />
+            </div>
           </div>
         </div>
       </CardHeader>
