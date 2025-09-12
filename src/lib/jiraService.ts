@@ -63,7 +63,7 @@ export async function fetchJiraTasks(): Promise<JiraTask[]> {
 
       while (hasMore) {
         const response = await fetch(
-          `https://${JIRA_DOMAIN}/rest/api/3/search/jql?jql=${encodeURIComponent(jqlQuery)}&startAt=${startAt}&maxResults=${maxResults}&fields=*all`,
+          `https://${JIRA_DOMAIN}/rest/api/3/search/jql?jql=${encodeURIComponent(jqlQuery)}&startAt=${startAt}&maxResults=${maxResults}&fields=*all,issuetype`,
           {
             headers: {
               'Authorization': `Basic ${auth}`,
@@ -113,6 +113,7 @@ export async function fetchJiraTasks(): Promise<JiraTask[]> {
             name: issue.fields?.summary || 'No title',
             status: issue.fields?.status?.name || 'Unknown',
             issueType: issue.fields?.issuetype?.name || 'Unknown',
+            issueTypeIconUrl: issue.fields?.issuetype?.iconUrl || undefined,
             isInSprint,
             assignee: issue.fields?.assignee?.displayName || 'Unassigned',
             priority: issue.fields?.priority?.name || 'Medium',

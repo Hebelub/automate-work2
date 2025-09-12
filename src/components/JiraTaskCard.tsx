@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PullRequestCard } from "@/components/PullRequestCard"
 import { LocalBranches } from "@/components/LocalBranches"
 import { CreateBranchSection } from "@/components/CreateBranchSection"
+import { JiraIssueTypeIcon } from "@/components/JiraIssueTypeIcon"
 import { ExternalLink, Clock, Copy, Check, Eye, EyeOff, X, FileText, GripVertical, ChevronDown, ChevronRight, GitBranch, Pause, Play, Link } from "lucide-react"
 import { CopyButton } from "@/components/ui/copy-button"
 import { DualCopyButton } from "@/components/ui/dual-copy-button"
@@ -221,6 +222,12 @@ export function JiraTaskCard({ task, onUpdateMetadata }: JiraTaskCardProps) {
         >
           {getHiddenIcon()}
         </button>
+        <JiraIssueTypeIcon 
+          issueType={task.issueType} 
+          iconUrl={task.issueTypeIconUrl}
+          className="h-4 w-4"
+          size={16}
+        />
         <a 
           href={task.url}
           target="_blank"
@@ -264,6 +271,12 @@ export function JiraTaskCard({ task, onUpdateMetadata }: JiraTaskCardProps) {
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-3">
+              <JiraIssueTypeIcon 
+                issueType={task.issueType} 
+                iconUrl={task.issueTypeIconUrl}
+                className="h-4 w-4"
+                size={16}
+              />
               <a 
                 href={task.url}
                 target="_blank"
@@ -282,9 +295,6 @@ export function JiraTaskCard({ task, onUpdateMetadata }: JiraTaskCardProps) {
               
               <Badge className={getStatusColor(task.status)}>
                 {task.status}
-              </Badge>
-              <Badge className={getIssueTypeColor(task.issueType)}>
-                {task.issueType}
               </Badge>
               {task.priority !== 'Medium' && task.priority !== 'Normal' && (
                 <Badge className={getPriorityColor(task.priority)}>

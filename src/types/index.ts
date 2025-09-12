@@ -4,6 +4,7 @@ export interface JiraTask {
   name: string
   status: 'Open' | 'In Progress' | 'On Hold' | 'QA' | 'Ready for PROD' | 'Done' | 'Rejected'
   issueType: string
+  issueTypeIconUrl?: string // URL to the issue type icon from Jira
   isInSprint: boolean
   assignee: string
   priority: string
