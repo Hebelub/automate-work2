@@ -1,8 +1,9 @@
 import { GitHubPR, LocalBranch } from "@/types"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ExternalLink, GitBranch, User, GitPullRequest, CheckCircle, Clock, AlertCircle, Users, Copy, Check, Eye, EyeOff } from "lucide-react"
+import { ExternalLink, GitBranch, User, GitPullRequest, CheckCircle, Clock, AlertCircle, Users, Copy, Check, Eye, EyeOff, Link } from "lucide-react"
 import { CopyButton } from "@/components/ui/copy-button"
+import { DualCopyButton } from "@/components/ui/dual-copy-button"
 import { useState } from "react"
 import { PullRequestMetadata } from "@/lib/jiraMetadataService"
 import { LocalBranches } from "@/components/LocalBranches"
@@ -103,6 +104,12 @@ export function PullRequestCard({ pr, onUpdateMetadata, taskStatus }: PullReques
         >
           #{pr.number}
         </a>
+        <DualCopyButton
+          identifier={`#${pr.number}`}
+          url={pr.url}
+          identifierTooltip="Copy PR number"
+          urlTooltip="Copy PR URL"
+        />
         <Badge variant="outline" className={`text-xs ${getStatusColor(pr.status)}`}>
           {pr.status}
         </Badge>
@@ -128,12 +135,11 @@ export function PullRequestCard({ pr, onUpdateMetadata, taskStatus }: PullReques
               >
                 #{pr.number}
               </a>
-              <CopyButton
-                textToCopy={pr.url}
-                tooltip="Copy PR URL"
-                icon={<Copy className="h-3 w-3" />}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-                successIcon={<Check className="h-3 w-3 text-green-600" />}
+              <DualCopyButton
+                identifier={`#${pr.number}`}
+                url={pr.url}
+                identifierTooltip="Copy PR number"
+                urlTooltip="Copy PR URL"
               />
               <Badge className={getStatusColor(pr.status)}>
                 {pr.status === 'open' && pr.isDraft ? 'Draft' : pr.status}

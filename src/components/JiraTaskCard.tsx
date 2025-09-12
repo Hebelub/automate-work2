@@ -4,8 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PullRequestCard } from "@/components/PullRequestCard"
 import { LocalBranches } from "@/components/LocalBranches"
 import { CreateBranchSection } from "@/components/CreateBranchSection"
-import { ExternalLink, Clock, Copy, Check, Eye, EyeOff, X, FileText, GripVertical, ChevronDown, ChevronRight, GitBranch, Pause, Play } from "lucide-react"
+import { ExternalLink, Clock, Copy, Check, Eye, EyeOff, X, FileText, GripVertical, ChevronDown, ChevronRight, GitBranch, Pause, Play, Link } from "lucide-react"
 import { CopyButton } from "@/components/ui/copy-button"
+import { DualCopyButton } from "@/components/ui/dual-copy-button"
 import { useState, useRef, useEffect } from "react"
 import { toggleTaskHidden, setTaskNotes, setTaskParent, wouldCreateLoop, hideTask, hideTaskUntilUpdated, showTask } from "@/lib/jiraMetadataService"
 import { usePRMetadata } from "@/hooks/usePRMetadata"
@@ -229,6 +230,12 @@ export function JiraTaskCard({ task, onUpdateMetadata }: JiraTaskCardProps) {
         >
           {task.key}
         </a>
+        <DualCopyButton
+          identifier={task.key}
+          url={task.url}
+          identifierTooltip="Copy task key"
+          urlTooltip="Copy Jira URL"
+        />
         <span className="text-gray-800 truncate">{task.name}</span>
         <Badge className={getStatusColor(task.status)}>
           {task.status}
@@ -266,19 +273,11 @@ export function JiraTaskCard({ task, onUpdateMetadata }: JiraTaskCardProps) {
               >
                 {task.key}
               </a>
-              <CopyButton
-                textToCopy={task.key}
-                tooltip="Copy task key"
-                icon={<Copy className="h-3 w-3" />}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-                successIcon={<Check className="h-3 w-3 text-green-600" />}
-              />
-              <CopyButton
-                textToCopy={task.url}
-                tooltip="Copy Jira URL"
-                icon={<ExternalLink className="h-3 w-3" />}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-                successIcon={<Check className="h-3 w-3 text-green-600" />}
+              <DualCopyButton
+                identifier={task.key}
+                url={task.url}
+                identifierTooltip="Copy task key"
+                urlTooltip="Copy Jira URL"
               />
               
               <Badge className={getStatusColor(task.status)}>
