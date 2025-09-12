@@ -8,6 +8,7 @@ export interface JiraTask {
   isInSprint: boolean
   assignee: string
   priority: string
+  priorityIconUrl?: string // URL to the priority icon from Jira
   description: string
   url: string
   lastJiraUpdate?: string // ISO timestamp of when task was last updated in Jira

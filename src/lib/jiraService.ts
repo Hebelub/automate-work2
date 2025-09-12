@@ -117,6 +117,7 @@ export async function fetchJiraTasks(): Promise<JiraTask[]> {
             isInSprint,
             assignee: issue.fields?.assignee?.displayName || 'Unassigned',
             priority: issue.fields?.priority?.name || 'Medium',
+            priorityIconUrl: issue.fields?.priority?.iconUrl || undefined,
             description: extractFullDescription(issue.fields?.description),
             url: `https://${JIRA_DOMAIN}/browse/${issue.key || 'unknown'}`,
             lastJiraUpdate: issue.fields?.updated || undefined
