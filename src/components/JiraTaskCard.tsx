@@ -312,7 +312,7 @@ export function JiraTaskCard({ task, onUpdateMetadata }: JiraTaskCardProps) {
               draggable
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
-              title="Drag to move or set parent"
+              title="Drag to set parent"
             >
               <GripVertical className="h-4 w-4" />
             </div>
