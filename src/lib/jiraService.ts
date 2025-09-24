@@ -96,12 +96,6 @@ export async function fetchJiraTasks(): Promise<JiraTask[]> {
       
       
       return allIssues
-        .filter((issue: any) => {
-          // Filter out only actual subtasks, not tasks that are part of an epic
-          const isSubtask = issue.fields?.issuetype?.name?.toLowerCase() === 'subtask' ||
-                           issue.fields?.issuetype?.subtask === true
-          return !isSubtask
-        })
         .map((issue: any) => {
           
           // Check if task is in sprint - JIRA can store sprint info in different ways
