@@ -117,11 +117,11 @@ function getPriorityValue(priority: string): number {
 }
 
 /**
- * Sorts tasks by priority (hidden status first, then status, then priority, then issue type)
+ * Sorts tasks by priority (hidden status first, then sprint status, then status, then priority, then issue type)
  * @param tasks - Array of tasks to sort
  * @returns Sorted array of tasks
  */
-export function sortTasksByPriority<T extends { status: string; issueType: string; priority?: string; hiddenStatus?: 'visible' | 'hidden' | 'hiddenUntilUpdated'; lastJiraUpdate?: string; hiddenUntilUpdatedDate?: string }>(tasks: T[]): T[] {
+export function sortTasksByPriority<T extends { status: string; issueType: string; priority?: string; hiddenStatus?: 'visible' | 'hidden' | 'hiddenUntilUpdated'; lastJiraUpdate?: string; hiddenUntilUpdatedDate?: string; isInSprint?: boolean }>(tasks: T[]): T[] {
   return [...tasks].sort((a, b) => {
     // First, compare by actual visibility - hidden tasks go to bottom
     const isTaskVisible = (task: T) => {
@@ -152,7 +152,14 @@ export function sortTasksByPriority<T extends { status: string; issueType: strin
       if (a.hiddenStatus === 'hidden' && b.hiddenStatus === 'hiddenUntilUpdated') return 1
     }
     
-    // If both have same hidden status, compare by status priority
+    // If both have same visibility, compare by sprint status - tasks not in sprint go to bottom
+    const aInSprint = a.isInSprint ?? true // Default to true if not specified
+    const bInSprint = b.isInSprint ?? true // Default to true if not specified
+    
+    if (aInSprint && !bInSprint) return -1
+    if (!aInSprint && bInSprint) return 1
+    
+    // If both have same sprint status, compare by status priority
     const statusA = getStatusPriority(a.status)
     const statusB = getStatusPriority(b.status)
     

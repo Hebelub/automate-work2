@@ -253,6 +253,12 @@ export function JiraTaskCard({ task, onUpdateMetadata, showHiddenItems = false }
             size={16}
           />
         )}
+        {!task.isInSprint && (
+          <Badge className="bg-gray-100 text-gray-600 border-gray-200">
+            <Clock className="h-3 w-3 mr-1" />
+            Not in Sprint
+          </Badge>
+        )}
         {task.lastJiraUpdate && (
           <div className="flex items-center gap-1 text-xs text-gray-500">
             <Clock className="h-3 w-3" />
