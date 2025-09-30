@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Plus, X, Edit } from "lucide-react"
-import { generateTestChannelUrl, findLatestWebsiteAccountingBranch } from "@/lib/utils"
+import { Plus, X, Edit, RotateCcw } from "lucide-react"
+import { generateTestChannelUrl, findLatestWebsiteAccountingBranch, findApiWorkerVoucherJiraTask } from "@/lib/utils"
 import { JiraWebLink } from "@/types"
 
 interface AddWebLinkFormProps {
@@ -23,10 +23,12 @@ export function AddWebLinkForm({
   const [url, setUrl] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [originalPrefilledValues, setOriginalPrefilledValues] = useState<{title: string, url: string} | null>(null)
 
   // Find the latest branch from tfso/website-accounting and generate URL
   const latestBranch = findLatestWebsiteAccountingBranch(pullRequests)
-  const testChannelUrl = latestBranch ? generateTestChannelUrl(latestBranch) : ""
+  const jiraTaskKey = findApiWorkerVoucherJiraTask(pullRequests)
+  const testChannelUrl = latestBranch ? generateTestChannelUrl(latestBranch, jiraTaskKey || undefined) : ""
 
   // Generate title with current date
   const generateTestChannelTitle = () => {
@@ -43,12 +45,23 @@ export function AddWebLinkForm({
       // Editing mode: populate with existing values
       setTitle(editingWebLink.title)
       setUrl(editingWebLink.url)
+      // Store the original prefilled values for reset functionality
+      setOriginalPrefilledValues({
+        title: generateTestChannelTitle(),
+        url: testChannelUrl
+      })
     } else {
       // Adding mode: use defaults
-      setTitle(generateTestChannelTitle())
+      const defaultTitle = generateTestChannelTitle()
+      setTitle(defaultTitle)
       if (testChannelUrl) {
         setUrl(testChannelUrl)
       }
+      // Store the original prefilled values for reset functionality
+      setOriginalPrefilledValues({
+        title: defaultTitle,
+        url: testChannelUrl
+      })
     }
   }, [editingWebLink, testChannelUrl])
 
@@ -149,6 +162,14 @@ export function AddWebLinkForm({
     }
   }
 
+  const handleResetToPrefilled = () => {
+    if (originalPrefilledValues) {
+      setTitle(originalPrefilledValues.title)
+      setUrl(originalPrefilledValues.url)
+      setError(null)
+    }
+  }
+
   return (
     <div className="mt-3 p-3 bg-gray-50 rounded border">
       <form onSubmit={handleSubmit} className="space-y-3">
@@ -175,6 +196,19 @@ export function AddWebLinkForm({
               disabled={isLoading}
             />
           </div>
+          {editingWebLink && originalPrefilledValues && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleResetToPrefilled}
+              disabled={isLoading}
+              className="px-3 h-8"
+              title="Reset to prefilled values"
+            >
+              <RotateCcw className="h-4 w-4" />
+            </Button>
+          )}
           <Button
             type="submit"
             size="sm"

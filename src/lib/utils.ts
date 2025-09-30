@@ -211,10 +211,16 @@ export function formatTimeSince(createdAt: string): string {
  * @param branchName - The branch name to convert
  * @returns The test channel URL
  */
-export function generateTestChannelUrl(branchName: string): string {
+export function generateTestChannelUrl(branchName: string, jiraTaskKey?: string): string {
   // Replace '/' and '_' with '-' in the branch name
   const sanitizedBranch = branchName.replace(/[/_]/g, '-')
-  return `https://beta.24sevenoffice.com/modules/accounting/vouchers?channel=${sanitizedBranch}`
+  let url = `https://beta.24sevenoffice.com/modules/accounting/vouchers?channel=${sanitizedBranch}`
+  
+  if (jiraTaskKey) {
+    url += `&env=${jiraTaskKey}`
+  }
+  
+  return url
 }
 
 /**
@@ -238,6 +244,40 @@ export function findLatestWebsiteAccountingBranch(pullRequests: any[]): string |
   )
 
   return sortedPRs[0]?.branch || null
+}
+
+/**
+ * Finds the latest branch from tfso/apiworker-voucher repository and extracts Jira task key
+ * @param pullRequests - Array of pull requests to search through
+ * @returns The Jira task key or null if not found
+ */
+export function findApiWorkerVoucherJiraTask(pullRequests: any[]): string | null {
+  // Filter PRs from tfso/apiworker-voucher repository
+  const apiWorkerPRs = pullRequests.filter(pr => 
+    pr.repository === 'tfso/apiworker-voucher'
+  )
+  
+  if (apiWorkerPRs.length === 0) {
+    return null
+  }
+  
+  // Sort by updated date (most recent first)
+  const sortedPRs = apiWorkerPRs.sort((a, b) => 
+    new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+  )
+  
+  const latestBranch = sortedPRs[0]?.branch
+  if (!latestBranch) {
+    return null
+  }
+  
+  // Extract Jira task key from branch name (feature/JIRA-123 or bugfix/JIRA-123)
+  const jiraMatch = latestBranch.match(/^(feature|bugfix)\/([A-Z]+-\d+)/i)
+  if (jiraMatch) {
+    return jiraMatch[2] // Return the Jira task key (e.g., "ROC-3921")
+  }
+  
+  return null
 }
 
 /**
