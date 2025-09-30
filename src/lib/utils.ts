@@ -205,3 +205,37 @@ export function formatTimeSince(createdAt: string): string {
     return `${days}d`
   }
 }
+
+/**
+ * Generates a test channel URL for tfso/website-accounting branches
+ * @param branchName - The branch name to convert
+ * @returns The test channel URL
+ */
+export function generateTestChannelUrl(branchName: string): string {
+  // Replace '/' and '_' with '-' in the branch name
+  const sanitizedBranch = branchName.replace(/[/_]/g, '-')
+  return `https://beta.24sevenoffice.com/modules/accounting/vouchers?channel=${sanitizedBranch}`
+}
+
+/**
+ * Finds the latest branch from tfso/website-accounting repository
+ * @param pullRequests - Array of pull requests to search through
+ * @returns The latest branch name or null if not found
+ */
+export function findLatestWebsiteAccountingBranch(pullRequests: any[]): string | null {
+  // Filter PRs from tfso/website-accounting repository
+  const websiteAccountingPRs = pullRequests.filter(pr => 
+    pr.repository === 'tfso/website-accounting'
+  )
+
+  if (websiteAccountingPRs.length === 0) {
+    return null
+  }
+
+  // Sort by updatedAt (most recent first) and get the first one
+  const sortedPRs = websiteAccountingPRs.sort((a, b) => 
+    new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+  )
+
+  return sortedPRs[0]?.branch || null
+}

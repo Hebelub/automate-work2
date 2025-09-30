@@ -1,3 +1,10 @@
+export interface JiraWebLink {
+  id: string
+  title: string
+  url: string
+  iconUrl?: string
+}
+
 export interface JiraTask {
   id: string
   key: string
@@ -13,6 +20,7 @@ export interface JiraTask {
   url: string
   lastJiraUpdate?: string // ISO timestamp of when task was last updated in Jira
   childTasks?: TaskWithPRs[]
+  webLinks?: JiraWebLink[] // Web links associated with the task
 }
 
 export interface LocalGitStatus {
@@ -94,4 +102,5 @@ export interface TaskWithPRs extends JiraTask {
   childTasksExpanded?: boolean
   pullRequestsExpanded?: boolean
   localBranchesExpanded?: boolean
+  webLinksExpanded?: boolean
 }

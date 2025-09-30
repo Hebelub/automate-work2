@@ -11,6 +11,7 @@ export interface JiraTaskMetadata {
   childTasksExpanded?: boolean
   pullRequestsExpanded?: boolean
   localBranchesExpanded?: boolean
+  webLinksExpanded?: boolean
 }
 
 export interface PullRequestMetadata {

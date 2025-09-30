@@ -6,17 +6,18 @@ import { LocalBranches } from "@/components/LocalBranches"
 import { CreateBranchSection } from "@/components/CreateBranchSection"
 import { JiraIssueTypeIcon } from "@/components/JiraIssueTypeIcon"
 import { JiraPriorityIcon } from "@/components/JiraPriorityIcon"
+import { WebLinkButton } from "@/components/WebLinkButton"
+import { WebLinksSection } from "@/components/WebLinksSection"
 import { Clock, Eye, EyeOff, X, FileText, GripVertical, ChevronDown, ChevronRight, Pause, Play } from "lucide-react"
 import { DualCopyButton } from "@/components/ui/dual-copy-button"
 import { useState, useRef, useEffect } from "react"
 import { setTaskNotes, setTaskParent, wouldCreateLoop, hideTask, hideTaskUntilUpdated, showTask } from "@/lib/jiraMetadataService"
 import { usePRMetadata } from "@/hooks/usePRMetadata"
-import { useBulkGitStatus } from "@/hooks/useBulkGitStatus"
 import { formatTimeSince } from "@/lib/utils"
 
 interface JiraTaskCardProps {
   task: TaskWithPRs
-  onUpdateMetadata: (taskId: string, updates: Partial<{ parentTaskId?: string; notes?: string; hiddenStatus?: 'visible' | 'hidden' | 'hiddenUntilUpdated'; hiddenUntilUpdatedDate?: string; childTasksExpanded?: boolean; pullRequestsExpanded?: boolean; localBranchesExpanded?: boolean }>) => void
+  onUpdateMetadata: (taskId: string, updates: Partial<{ parentTaskId?: string; notes?: string; hiddenStatus?: 'visible' | 'hidden' | 'hiddenUntilUpdated'; hiddenUntilUpdatedDate?: string; childTasksExpanded?: boolean; pullRequestsExpanded?: boolean; localBranchesExpanded?: boolean; webLinksExpanded?: boolean }>) => void
   showHiddenItems?: boolean
 }
 
@@ -90,6 +91,10 @@ export function JiraTaskCard({ task, onUpdateMetadata, showHiddenItems = false }
 
   const handleToggleLocalBranches = () => {
     onUpdateMetadata(task.id, { localBranchesExpanded: !task.localBranchesExpanded })
+  }
+
+  const handleToggleWebLinks = () => {
+    onUpdateMetadata(task.id, { webLinksExpanded: !task.webLinksExpanded })
   }
 
   // Auto-resize textarea on mount and when notes change
@@ -339,6 +344,12 @@ export function JiraTaskCard({ task, onUpdateMetadata, showHiddenItems = false }
           </div>
           
           <div className="flex items-center gap-2">            
+            {/* Web Link Button */}
+            <WebLinkButton
+              taskId={task.key}
+              pullRequests={task.pullRequests}
+            />
+            
             {/* Detach Parent Button - only show if task has a parent */}
             {task.parentTaskId && (
               <button
@@ -425,6 +436,13 @@ export function JiraTaskCard({ task, onUpdateMetadata, showHiddenItems = false }
             </div>
           )}
 
+          {/* Web Links */}
+          <WebLinksSection
+            webLinks={task.webLinks || []}
+            isExpanded={task.webLinksExpanded || false}
+            onToggle={handleToggleWebLinks}
+          />
+
           {/* Child Tasks */}
           {task.childTasks && task.childTasks.length > 0 && (() => {
             const visibleChildTasks = showHiddenItems 
@@ -460,7 +478,7 @@ export function JiraTaskCard({ task, onUpdateMetadata, showHiddenItems = false }
             );
           })()}
 
-          {/* Local Branches */}
+          {/* Branches */}
           {task.localBranches && task.localBranches.length > 0 && (
             <div className="space-y-2">
               <button
@@ -472,7 +490,7 @@ export function JiraTaskCard({ task, onUpdateMetadata, showHiddenItems = false }
                 ) : (
                   <ChevronRight className="h-4 w-4" />
                 )}
-                Local Branches ({task.localBranches.length})
+                Branches ({task.localBranches.length})
               </button>
               
               {task.localBranchesExpanded && (

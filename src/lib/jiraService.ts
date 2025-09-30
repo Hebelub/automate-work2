@@ -35,6 +35,50 @@ function extractFullDescription(description: any): string {
   return fullText.trim()
 }
 
+// Helper function to extract web links from JIRA issue (legacy - not used anymore)
+function extractWebLinks(issue: any): any[] {
+  // This function is no longer used since we fetch remote links separately
+  return []
+}
+
+// Function to fetch remote links for a specific issue
+async function fetchRemoteLinks(issueKey: string): Promise<any[]> {
+  if (!JIRA_DOMAIN || !JIRA_EMAIL || !JIRA_API_TOKEN) {
+    return []
+  }
+
+  try {
+    const response = await fetch(
+      `https://${JIRA_DOMAIN}/rest/api/3/issue/${issueKey}/remotelink`,
+      {
+        headers: {
+          'Authorization': `Basic ${auth}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+      }
+    )
+
+    if (!response.ok) {
+      console.error(`Failed to fetch remote links for ${issueKey}: ${response.status}`)
+      return []
+    }
+
+    const remoteLinks = await response.json()
+    console.log(`Remote links for ${issueKey}:`, remoteLinks)
+    
+    return remoteLinks.map((link: any) => ({
+      id: link.id,
+      title: link.object?.title || 'Web Link',
+      url: link.object?.url || '',
+      iconUrl: link.object?.icon?.url16x16
+    }))
+  } catch (error) {
+    console.error(`Error fetching remote links for ${issueKey}:`, error)
+    return []
+  }
+}
+
 export async function fetchJiraTasks(): Promise<JiraTask[]> {
   if (!JIRA_DOMAIN || !JIRA_EMAIL || !JIRA_API_TOKEN) {
     console.warn('JIRA credentials not configured, returning empty array')
@@ -63,7 +107,7 @@ export async function fetchJiraTasks(): Promise<JiraTask[]> {
 
       while (hasMore) {
         const response = await fetch(
-          `https://${JIRA_DOMAIN}/rest/api/3/search/jql?jql=${encodeURIComponent(jqlQuery)}&startAt=${startAt}&maxResults=${maxResults}&fields=*all,issuetype`,
+          `https://${JIRA_DOMAIN}/rest/api/3/search/jql?jql=${encodeURIComponent(jqlQuery)}&startAt=${startAt}&maxResults=${maxResults}&fields=*all,issuetype,remotelink,remotelinks`,
           {
             headers: {
               'Authorization': `Basic ${auth}`,
@@ -95,11 +139,14 @@ export async function fetchJiraTasks(): Promise<JiraTask[]> {
       console.log(`Successfully fetched ${allIssues.length} issues with query: ${jqlQuery}`)
       
       
-      return allIssues
-        .map((issue: any) => {
-          
+      // Fetch remote links for all issues in parallel
+      const tasksWithWebLinks = await Promise.all(
+        allIssues.map(async (issue: any) => {
           // Check if task is in sprint - JIRA can store sprint info in different ways
           const isInSprint = checkIfInSprint(issue)
+          
+          // Fetch remote links for this specific issue
+          const remoteLinks = await fetchRemoteLinks(issue.key)
           
           return {
             id: issue.id || 'unknown',
@@ -114,9 +161,13 @@ export async function fetchJiraTasks(): Promise<JiraTask[]> {
             priorityIconUrl: issue.fields?.priority?.iconUrl || undefined,
             description: extractFullDescription(issue.fields?.description),
             url: `https://${JIRA_DOMAIN}/browse/${issue.key || 'unknown'}`,
-            lastJiraUpdate: issue.fields?.updated || undefined
+            lastJiraUpdate: issue.fields?.updated || undefined,
+            webLinks: remoteLinks
           }
         })
+      )
+      
+      return tasksWithWebLinks
     } catch (error) {
       console.error(`Failed with JQL query "${jqlQuery}":`, error)
       // Continue to next query
