@@ -1,20 +1,23 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Plus, X } from "lucide-react"
+import { Plus, X, Edit } from "lucide-react"
 import { generateTestChannelUrl, findLatestWebsiteAccountingBranch } from "@/lib/utils"
+import { JiraWebLink } from "@/types"
 
 interface AddWebLinkFormProps {
   taskId: string
   pullRequests: any[]
   onWebLinkAdded: () => void
   onCancel: () => void
+  editingWebLink?: JiraWebLink
 }
 
 export function AddWebLinkForm({ 
   taskId, 
   pullRequests, 
   onWebLinkAdded,
-  onCancel 
+  onCancel,
+  editingWebLink
 }: AddWebLinkFormProps) {
   const [title, setTitle] = useState("")
   const [url, setUrl] = useState("")
@@ -34,15 +37,20 @@ export function AddWebLinkForm({
     return `Test Channel (${day}.${month}.${year})`
   }
 
-  // Initialize title and URL when component mounts or when latestBranch changes
+  // Initialize title and URL when component mounts or when editingWebLink changes
   useEffect(() => {
-    if (!title) {
+    if (editingWebLink) {
+      // Editing mode: populate with existing values
+      setTitle(editingWebLink.title)
+      setUrl(editingWebLink.url)
+    } else {
+      // Adding mode: use defaults
       setTitle(generateTestChannelTitle())
+      if (testChannelUrl) {
+        setUrl(testChannelUrl)
+      }
     }
-    if (testChannelUrl && !url) {
-      setUrl(testChannelUrl)
-    }
-  }, [testChannelUrl, url, title])
+  }, [editingWebLink, testChannelUrl])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -64,32 +72,71 @@ export function AddWebLinkForm({
     setError(null)
 
     try {
-      const response = await fetch('/api/add-web-link', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          taskId: taskId,
-          title: title.trim(),
-          url: url.trim()
+      // If editing, we need to add the new one first, then delete the old one
+      if (editingWebLink) {
+        // Step 1: Add the new web link
+        const addResponse = await fetch('/api/add-web-link', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            taskId: taskId,
+            title: title.trim(),
+            url: url.trim()
+          })
         })
-      })
 
-      const result = await response.json()
-      
-      if (result.success) {
+        const addResult = await addResponse.json()
+        
+        if (!addResult.success) {
+          setError(addResult.error || "Failed to add updated web link")
+          return
+        }
+
+        // Step 2: Delete the old web link
+        const deleteResponse = await fetch(`/api/delete-web-link?taskId=${taskId}&linkId=${editingWebLink.id}`, {
+          method: 'DELETE',
+        })
+
+        const deleteResult = await deleteResponse.json()
+        
+        if (!deleteResult.success) {
+          setError(deleteResult.error || "Failed to remove old web link")
+          return
+        }
+
         onWebLinkAdded()
-        // Reset form with new date
-        setTitle(generateTestChannelTitle())
-        setUrl(testChannelUrl)
         setError(null)
       } else {
-        setError(result.error || "Failed to add web link")
+        // Adding new web link
+        const response = await fetch('/api/add-web-link', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            taskId: taskId,
+            title: title.trim(),
+            url: url.trim()
+          })
+        })
+
+        const result = await response.json()
+        
+        if (result.success) {
+          onWebLinkAdded()
+          // Reset form with new date
+          setTitle(generateTestChannelTitle())
+          setUrl(testChannelUrl)
+          setError(null)
+        } else {
+          setError(result.error || "Failed to add web link")
+        }
       }
     } catch (error) {
       setError("An unexpected error occurred")
-      console.error("Error adding web link:", error)
+      console.error("Error with web link operation:", error)
     } finally {
       setIsLoading(false)
     }
@@ -137,7 +184,7 @@ export function AddWebLinkForm({
             {isLoading ? (
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
             ) : (
-              <Plus className="h-4 w-4" />
+              editingWebLink ? <Edit className="h-4 w-4" /> : <Plus className="h-4 w-4" />
             )}
           </Button>
           <Button

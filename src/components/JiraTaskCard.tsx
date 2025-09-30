@@ -1,4 +1,4 @@
-import { TaskWithPRs } from "@/types"
+import { TaskWithPRs, JiraWebLink } from "@/types"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PullRequestCard } from "@/components/PullRequestCard"
@@ -29,6 +29,7 @@ export function JiraTaskCard({ task, onUpdateMetadata, showHiddenItems = false, 
   const [isDragOver, setIsDragOver] = useState(false)
   const [isAddingNotes, setIsAddingNotes] = useState(false)
   const [showAddWebLinkForm, setShowAddWebLinkForm] = useState(false)
+  const [editingWebLink, setEditingWebLink] = useState<JiraWebLink | undefined>(undefined)
   const cardRef = useRef<HTMLDivElement>(null)
   const notesRef = useRef<HTMLTextAreaElement>(null)
   
@@ -102,10 +103,17 @@ export function JiraTaskCard({ task, onUpdateMetadata, showHiddenItems = false, 
 
   const handleToggleAddWebLinkForm = () => {
     setShowAddWebLinkForm(!showAddWebLinkForm)
+    setEditingWebLink(undefined)
+  }
+
+  const handleEditWebLink = (webLink: JiraWebLink) => {
+    setEditingWebLink(webLink)
+    setShowAddWebLinkForm(true)
   }
 
   const handleWebLinkAdded = () => {
     setShowAddWebLinkForm(false)
+    setEditingWebLink(undefined)
     onRefreshTask?.(task.id)
   }
 
@@ -455,6 +463,8 @@ export function JiraTaskCard({ task, onUpdateMetadata, showHiddenItems = false, 
             onToggle={handleToggleWebLinks}
             taskId={task.key}
             onWebLinkDeleted={() => onRefreshTask?.(task.id)}
+            onEditWebLink={handleEditWebLink}
+            editingWebLinkId={editingWebLink?.id}
           />
 
           {/* Add Web Link Form */}
@@ -464,6 +474,7 @@ export function JiraTaskCard({ task, onUpdateMetadata, showHiddenItems = false, 
               pullRequests={task.pullRequests}
               onWebLinkAdded={handleWebLinkAdded}
               onCancel={handleToggleAddWebLinkForm}
+              editingWebLink={editingWebLink}
             />
           )}
 

@@ -1,5 +1,5 @@
 import { JiraWebLink } from "@/types"
-import { ChevronDown, ChevronRight, Copy, Check, Trash2 } from "lucide-react"
+import { ChevronDown, ChevronRight, Copy, Check, Trash2, Edit } from "lucide-react"
 import { CopyButton } from "@/components/ui/copy-button"
 
 interface WebLinksSectionProps {
@@ -8,6 +8,8 @@ interface WebLinksSectionProps {
   onToggle: () => void
   taskId: string
   onWebLinkDeleted: () => void
+  onEditWebLink: (webLink: JiraWebLink) => void
+  editingWebLinkId?: string
 }
 
 // Helper function to format URL for display
@@ -24,7 +26,9 @@ export function WebLinksSection({
   isExpanded, 
   onToggle,
   taskId,
-  onWebLinkDeleted
+  onWebLinkDeleted,
+  onEditWebLink,
+  editingWebLinkId
 }: WebLinksSectionProps) {
   // Only show the section if there are web links
   if (webLinks.length === 0) {
@@ -73,7 +77,11 @@ export function WebLinksSection({
           {webLinks.map((link) => (
             <div
               key={link.id}
-              className="flex items-center gap-3 p-2 bg-gray-50 rounded text-sm"
+              className={`flex items-center gap-3 p-2 rounded text-sm ${
+                editingWebLinkId === link.id 
+                  ? 'bg-blue-50 border border-blue-200' 
+                  : 'bg-gray-50'
+              }`}
             >
               {/* Name */}
               <div className="flex items-center gap-2 flex-shrink-0">
@@ -107,6 +115,13 @@ export function WebLinksSection({
                   icon={<Copy className="h-3 w-3" />}
                   successIcon={<Check className="h-3 w-3 text-green-600" />}
                 />
+                <button
+                  onClick={() => onEditWebLink(link)}
+                  className="text-gray-400 hover:text-blue-600 transition-colors flex-shrink-0 p-1"
+                  title="Edit web link"
+                >
+                  <Edit className="h-3 w-3" />
+                </button>
                 <button
                   onClick={() => handleDeleteWebLink(link.id)}
                   className="text-gray-400 hover:text-red-600 transition-colors flex-shrink-0 p-1"
