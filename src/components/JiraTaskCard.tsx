@@ -8,6 +8,7 @@ import { JiraIssueTypeIcon } from "@/components/JiraIssueTypeIcon"
 import { JiraPriorityIcon } from "@/components/JiraPriorityIcon"
 import { WebLinkButton } from "@/components/WebLinkButton"
 import { WebLinksSection } from "@/components/WebLinksSection"
+import { AddWebLinkForm } from "@/components/AddWebLinkForm"
 import { Clock, Eye, EyeOff, X, FileText, GripVertical, ChevronDown, ChevronRight, Pause, Play } from "lucide-react"
 import { DualCopyButton } from "@/components/ui/dual-copy-button"
 import { useState, useRef, useEffect } from "react"
@@ -19,13 +20,15 @@ interface JiraTaskCardProps {
   task: TaskWithPRs
   onUpdateMetadata: (taskId: string, updates: Partial<{ parentTaskId?: string; notes?: string; hiddenStatus?: 'visible' | 'hidden' | 'hiddenUntilUpdated'; hiddenUntilUpdatedDate?: string; childTasksExpanded?: boolean; pullRequestsExpanded?: boolean; localBranchesExpanded?: boolean; webLinksExpanded?: boolean }>) => void
   showHiddenItems?: boolean
+  onRefreshTask?: (taskId: string) => void
 }
 
-export function JiraTaskCard({ task, onUpdateMetadata, showHiddenItems = false }: JiraTaskCardProps) {
+export function JiraTaskCard({ task, onUpdateMetadata, showHiddenItems = false, onRefreshTask }: JiraTaskCardProps) {
   const [notes, setNotes] = useState(task.notes || '')
   const [isDragging, setIsDragging] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
   const [isAddingNotes, setIsAddingNotes] = useState(false)
+  const [showAddWebLinkForm, setShowAddWebLinkForm] = useState(false)
   const cardRef = useRef<HTMLDivElement>(null)
   const notesRef = useRef<HTMLTextAreaElement>(null)
   
@@ -95,6 +98,15 @@ export function JiraTaskCard({ task, onUpdateMetadata, showHiddenItems = false }
 
   const handleToggleWebLinks = () => {
     onUpdateMetadata(task.id, { webLinksExpanded: !task.webLinksExpanded })
+  }
+
+  const handleToggleAddWebLinkForm = () => {
+    setShowAddWebLinkForm(!showAddWebLinkForm)
+  }
+
+  const handleWebLinkAdded = () => {
+    setShowAddWebLinkForm(false)
+    onRefreshTask?.(task.id)
   }
 
   // Auto-resize textarea on mount and when notes change
@@ -346,8 +358,8 @@ export function JiraTaskCard({ task, onUpdateMetadata, showHiddenItems = false }
           <div className="flex items-center gap-2">            
             {/* Web Link Button */}
             <WebLinkButton
-              taskId={task.key}
-              pullRequests={task.pullRequests}
+              onClick={handleToggleAddWebLinkForm}
+              isActive={showAddWebLinkForm}
             />
             
             {/* Detach Parent Button - only show if task has a parent */}
@@ -441,7 +453,19 @@ export function JiraTaskCard({ task, onUpdateMetadata, showHiddenItems = false }
             webLinks={task.webLinks || []}
             isExpanded={task.webLinksExpanded || false}
             onToggle={handleToggleWebLinks}
+            taskId={task.key}
+            onWebLinkDeleted={() => onRefreshTask?.(task.id)}
           />
+
+          {/* Add Web Link Form */}
+          {showAddWebLinkForm && (
+            <AddWebLinkForm
+              taskId={task.key}
+              pullRequests={task.pullRequests}
+              onWebLinkAdded={handleWebLinkAdded}
+              onCancel={handleToggleAddWebLinkForm}
+            />
+          )}
 
           {/* Child Tasks */}
           {task.childTasks && task.childTasks.length > 0 && (() => {

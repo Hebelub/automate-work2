@@ -220,3 +220,78 @@ function checkIfInSprint(issue: any): boolean {
   
   return false
 }
+
+// Function to add a remote link to a Jira issue
+export async function addRemoteLink(issueKey: string, title: string, url: string): Promise<{ success: boolean; error?: string }> {
+  if (!JIRA_DOMAIN || !JIRA_EMAIL || !JIRA_API_TOKEN) {
+    return { success: false, error: 'JIRA credentials not configured' }
+  }
+
+  try {
+    const response = await fetch(
+      `https://${JIRA_DOMAIN}/rest/api/3/issue/${issueKey}/remotelink`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Basic ${auth}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          object: {
+            url: url,
+            title: title
+          }
+        })
+      }
+    )
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error(`Failed to add remote link: ${response.status} ${response.statusText}`)
+      console.error('Error details:', errorText)
+      return { success: false, error: `Failed to add web link: ${response.status} ${response.statusText}` }
+    }
+
+    console.log(`Successfully added remote link to ${issueKey}`)
+    return { success: true }
+  } catch (error) {
+    console.error('Error adding remote link:', error)
+    return { success: false, error: 'Network error while adding web link' }
+  }
+}
+
+// Function to delete a remote link from a Jira issue
+export async function deleteRemoteLink(issueKey: string, linkId: string): Promise<{ success: boolean; error?: string }> {
+  if (!JIRA_DOMAIN || !JIRA_EMAIL || !JIRA_API_TOKEN) {
+    return { success: false, error: 'JIRA credentials not configured' }
+  }
+
+  const auth = Buffer.from(`${JIRA_EMAIL}:${JIRA_API_TOKEN}`).toString('base64')
+
+  try {
+    const response = await fetch(
+      `https://${JIRA_DOMAIN}/rest/api/3/issue/${issueKey}/remotelink/${linkId}`,
+      {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Basic ${auth}`,
+          'Accept': 'application/json',
+        }
+      }
+    )
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error(`Failed to delete remote link: ${response.status} ${response.statusText}`)
+      console.error('Error details:', errorText)
+      return { success: false, error: `Failed to delete web link: ${response.status} ${response.statusText}` }
+    }
+
+    console.log(`Successfully deleted remote link ${linkId} from ${issueKey}`)
+    return { success: true }
+  } catch (error) {
+    console.error('Error deleting remote link:', error)
+    return { success: false, error: 'Network error while deleting web link' }
+  }
+}

@@ -70,8 +70,26 @@ export function Dashboard() {
 
 
   // Function to update task metadata
-  const updateTaskMetadata = (taskId: string, updates: Partial<{ parentTaskId?: string; notes?: string; hiddenStatus?: 'visible' | 'hidden' | 'hiddenUntilUpdated'; hiddenUntilUpdatedDate?: string; childTasksExpanded?: boolean; pullRequestsExpanded?: boolean; localBranchesExpanded?: boolean }>) => {
+  const updateTaskMetadata = (taskId: string, updates: Partial<{ parentTaskId?: string; notes?: string; hiddenStatus?: 'visible' | 'hidden' | 'hiddenUntilUpdated'; hiddenUntilUpdatedDate?: string; childTasksExpanded?: boolean; pullRequestsExpanded?: boolean; localBranchesExpanded?: boolean; webLinksExpanded?: boolean }>) => {
     updateMetadata(taskId, updates);
+  };
+
+  // Function to refresh a specific task (for web link updates)
+  const refreshTask = async (taskId: string) => {
+    try {
+      console.log(`Refreshing task ${taskId}...`);
+      const response = await fetch("/api/dashboard");
+      
+      if (!response.ok) {
+        throw new Error(`Failed to refresh: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      setTasks(data.tasks);
+      console.log(`Task ${taskId} refreshed successfully`);
+    } catch (error) {
+      console.error(`Error refreshing task ${taskId}:`, error);
+    }
   };
 
   // Function to toggle show/hide hidden items
@@ -467,6 +485,7 @@ export function Dashboard() {
                 task={task} 
                 onUpdateMetadata={updateTaskMetadata}
                 showHiddenItems={showHiddenItems}
+                onRefreshTask={refreshTask}
               />
             ))}
           </div>

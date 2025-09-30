@@ -1,16 +1,57 @@
 import { JiraWebLink } from "@/types"
-import { ExternalLink, ChevronDown, ChevronRight } from "lucide-react"
+import { ChevronDown, ChevronRight, Copy, Check, Trash2 } from "lucide-react"
+import { CopyButton } from "@/components/ui/copy-button"
 
 interface WebLinksSectionProps {
   webLinks: JiraWebLink[]
   isExpanded: boolean
   onToggle: () => void
+  taskId: string
+  onWebLinkDeleted: () => void
 }
 
-export function WebLinksSection({ webLinks, isExpanded, onToggle }: WebLinksSectionProps) {
+// Helper function to format URL for display
+function formatUrlForDisplay(url: string): string {
+  // Strip https://beta.24sevenoffice.com/ if the URL starts with it
+  if (url.startsWith('https://beta.24sevenoffice.com/')) {
+    return url.replace('https://beta.24sevenoffice.com/', '')
+  }
+  return url
+}
+
+export function WebLinksSection({ 
+  webLinks, 
+  isExpanded, 
+  onToggle,
+  taskId,
+  onWebLinkDeleted
+}: WebLinksSectionProps) {
   // Only show the section if there are web links
   if (webLinks.length === 0) {
     return null
+  }
+
+  const handleDeleteWebLink = async (linkId: string) => {
+    if (!confirm('Are you sure you want to delete this web link?')) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/delete-web-link?taskId=${taskId}&linkId=${linkId}`, {
+        method: 'DELETE',
+      })
+
+      const result = await response.json()
+      
+      if (result.success) {
+        onWebLinkDeleted()
+      } else {
+        alert(result.error || 'Failed to delete web link')
+      }
+    } catch (error) {
+      alert('An unexpected error occurred while deleting the web link')
+      console.error('Error deleting web link:', error)
+    }
   }
 
   return (
@@ -32,27 +73,48 @@ export function WebLinksSection({ webLinks, isExpanded, onToggle }: WebLinksSect
           {webLinks.map((link) => (
             <div
               key={link.id}
-              className="flex items-center justify-between p-2 bg-gray-50 rounded text-sm"
+              className="flex items-center gap-3 p-2 bg-gray-50 rounded text-sm"
             >
-              <div className="flex items-center gap-2 flex-1 min-w-0">
+              {/* Name */}
+              <div className="flex items-center gap-2 flex-shrink-0">
                 {link.iconUrl && (
                   <img 
                     src={link.iconUrl} 
                     alt="" 
-                    className="h-4 w-4 flex-shrink-0" 
+                    className="h-4 w-4" 
                   />
                 )}
-                <span className="font-medium text-gray-900 truncate">
+                <span className="font-medium text-gray-900">
                   {link.title}
                 </span>
               </div>
-              <button
-                onClick={() => window.open(link.url, '_blank', 'noopener,noreferrer')}
-                className="text-gray-500 hover:text-gray-700 transition-colors flex-shrink-0 ml-2"
-                title="Open link"
-              >
-                <ExternalLink className="h-4 w-4" />
-              </button>
+              
+              {/* URL with Copy and Delete Buttons */}
+              <div className="flex items-center gap-1 flex-1 min-w-0">
+                <a
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-600 hover:text-blue-600 hover:underline transition-colors truncate"
+                  title={link.url}
+                >
+                  {formatUrlForDisplay(link.url)}
+                </a>
+                <CopyButton
+                  textToCopy={link.url}
+                  tooltip="Copy URL"
+                  className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
+                  icon={<Copy className="h-3 w-3" />}
+                  successIcon={<Check className="h-3 w-3 text-green-600" />}
+                />
+                <button
+                  onClick={() => handleDeleteWebLink(link.id)}
+                  className="text-gray-400 hover:text-red-600 transition-colors flex-shrink-0 p-1"
+                  title="Delete web link"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              </div>
             </div>
           ))}
         </div>

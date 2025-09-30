@@ -239,3 +239,13 @@ export function findLatestWebsiteAccountingBranch(pullRequests: any[]): string |
 
   return sortedPRs[0]?.branch || null
 }
+
+/**
+ * Gets the Jira URL for a specific issue
+ * @param issueKey - The Jira issue key (e.g., "ROC-1234")
+ * @returns The full Jira URL
+ */
+export function getJiraUrl(issueKey: string): string {
+  const domain = process.env.NEXT_PUBLIC_JIRA_DOMAIN || process.env.JIRA_DOMAIN || 'your-domain.atlassian.net'
+  return `https://${domain}/browse/${issueKey}`
+}
