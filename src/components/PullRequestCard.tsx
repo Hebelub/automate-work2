@@ -24,12 +24,27 @@ export function PullRequestCard({ pr, onUpdateMetadata, taskStatus }: PullReques
 
 
 
-  const getStatusColor = (status: GitHubPR['status'], isDraft?: boolean) => {
+  const getStatusColor = (status: GitHubPR['status'], reviewStatus?: GitHubPR['reviewStatus'], isDraft?: boolean) => {
     // Give draft PRs a distinctive color
     if (isDraft) {
       return 'bg-orange-100 text-orange-800 border-orange-200'
     }
     
+    // If not draft, use review status color if available
+    if (reviewStatus && reviewStatus !== 'no_reviews') {
+      switch (reviewStatus) {
+        case 'approved':
+          return 'bg-green-100 text-green-800 border-green-200'
+        case 'pending':
+          return 'bg-yellow-100 text-yellow-800 border-yellow-200'
+        case 'changes_requested':
+          return 'bg-red-100 text-red-800 border-red-200'
+        default:
+          return 'bg-gray-100 text-gray-800 border-gray-200'
+      }
+    }
+    
+    // Fallback to original status
     switch (status) {
       case 'open':
         return 'bg-green-100 text-green-800 border-green-200'
@@ -66,6 +81,32 @@ export function PullRequestCard({ pr, onUpdateMetadata, taskStatus }: PullReques
         return 'bg-gray-100 text-gray-600 border-gray-200'
       default:
         return 'bg-gray-100 text-gray-600 border-gray-200'
+    }
+  }
+
+  const getMainStatusText = (pr: GitHubPR & PullRequestMetadata) => {
+    // Priority: draft ?? approverStatus ?? open
+    if (pr.isDraft) {
+      return 'Draft'
+    }
+    
+    // If not draft, show review status if available
+    if (pr.reviewStatus && pr.reviewStatus !== 'no_reviews') {
+      return getReviewStatusText(pr.reviewStatus, pr)
+    }
+    
+    // Fallback to original status
+    switch (pr.status) {
+      case 'open':
+        return 'Open'
+      case 'closed':
+        return 'Closed'
+      case 'merged':
+        return 'Merged'
+      case 'draft':
+        return 'Draft'
+      default:
+        return 'Unknown'
     }
   }
 
@@ -147,8 +188,8 @@ export function PullRequestCard({ pr, onUpdateMetadata, taskStatus }: PullReques
           identifierTooltip="Copy PR number"
           urlTooltip="Copy PR URL"
         />
-        <Badge variant="outline" className={`text-xs ${getStatusColor(pr.status, pr.isDraft)}`}>
-          {pr.status}
+        <Badge variant="outline" className={`text-xs ${getStatusColor(pr.status, pr.reviewStatus, pr.isDraft)}`}>
+          {getMainStatusText(pr)}
         </Badge>
         <GitPullRequest className="h-3 w-3 text-gray-500" />
         <span className="font-mono text-gray-600">{pr.repository}</span>
@@ -178,8 +219,8 @@ export function PullRequestCard({ pr, onUpdateMetadata, taskStatus }: PullReques
                 identifierTooltip="Copy PR number"
                 urlTooltip="Copy PR URL"
               />
-              <Badge className={getStatusColor(pr.status, pr.isDraft)}>
-                {pr.status === 'open' && pr.isDraft ? 'Draft' : pr.status}
+              <Badge className={getStatusColor(pr.status, pr.reviewStatus, pr.isDraft)}>
+                {getMainStatusText(pr)}
               </Badge>
             </div>
             <CardTitle className="text-sm font-medium line-clamp-2">
@@ -228,19 +269,9 @@ export function PullRequestCard({ pr, onUpdateMetadata, taskStatus }: PullReques
             />
           )}
 
-          {/* Review Status and Reviewers Information - Only show for open, non-draft PRs */}
+          {/* Reviewers Information - Only show for open, non-draft PRs */}
           {pr.status === 'open' && !pr.isDraft && (
-            <div className="flex items-center justify-between gap-4">
-              {/* Status Badge */}
-              <Badge className={getReviewStatusColor(pr.reviewStatus, pr)}>
-                <div className="flex items-center gap-1">
-                  {getReviewStatusIcon(pr.reviewStatus, pr)}
-                  {getReviewStatusText(pr.reviewStatus, pr)}
-                </div>
-              </Badge>
-
-              {/* Reviewers Information */}
-              <div className="flex items-center gap-4 text-xs text-gray-600">
+            <div className="flex items-center gap-4 text-xs text-gray-600">
                 {/* Waiting for section */}
                 {pr.requestedReviewers.length > 0 && (
                   <div className="flex items-center gap-2">
@@ -263,7 +294,7 @@ export function PullRequestCard({ pr, onUpdateMetadata, taskStatus }: PullReques
                   <div className="flex items-center gap-2">
                     <div className="flex items-center gap-1">
                       <AlertCircle className="h-3 w-3 text-red-600" />
-                      <span className="font-medium text-red-600">Changes requested:</span>
+                      <span className="font-medium">Changes requested:</span>
                     </div>
                     <div className="flex flex-wrap gap-1">
                       {/* For now, show all requested reviewers as they requested changes */}
@@ -280,8 +311,8 @@ export function PullRequestCard({ pr, onUpdateMetadata, taskStatus }: PullReques
                 {pr.approvedReviewers.length > 0 && (
                   <div className="flex items-center gap-2">
                     <div className="flex items-center gap-1">
-                      <CheckCircle className="h-3 w-3 text-green-600" />
-                      <span className="font-medium text-green-600">Approved by:</span>
+                      <CheckCircle className="h-3 w-3" />
+                      <span className="font-medium">Approved by:</span>
                     </div>
                     <div className="flex flex-wrap gap-1">
                       {pr.approvedReviewers.map((reviewer, index) => (
@@ -292,7 +323,6 @@ export function PullRequestCard({ pr, onUpdateMetadata, taskStatus }: PullReques
                     </div>
                   </div>
                 )}
-              </div>
             </div>
           )}
         </div>
