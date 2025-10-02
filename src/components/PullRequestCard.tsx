@@ -1,7 +1,7 @@
 import { GitHubPR, LocalBranch } from "@/types"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ExternalLink, GitBranch, User, GitPullRequest, CheckCircle, Clock, AlertCircle, Users, Copy, Check, Eye, EyeOff, Link } from "lucide-react"
+import { ExternalLink, GitBranch, User, GitPullRequest, CheckCircle, Clock, AlertCircle, Users, Copy, Check, Eye, EyeOff, Link, FileText } from "lucide-react"
 import { CopyButton } from "@/components/ui/copy-button"
 import { DualCopyButton } from "@/components/ui/dual-copy-button"
 import { useState } from "react"
@@ -24,7 +24,12 @@ export function PullRequestCard({ pr, onUpdateMetadata, taskStatus }: PullReques
 
 
 
-  const getStatusColor = (status: GitHubPR['status']) => {
+  const getStatusColor = (status: GitHubPR['status'], isDraft?: boolean) => {
+    // Give draft PRs a distinctive color
+    if (isDraft) {
+      return 'bg-orange-100 text-orange-800 border-orange-200'
+    }
+    
     switch (status) {
       case 'open':
         return 'bg-green-100 text-green-800 border-green-200'
@@ -33,13 +38,18 @@ export function PullRequestCard({ pr, onUpdateMetadata, taskStatus }: PullReques
       case 'merged':
         return 'bg-purple-100 text-purple-800 border-purple-200'
       case 'draft':
-        return 'bg-gray-100 text-gray-800 border-gray-200'
+        return 'bg-orange-100 text-orange-800 border-orange-200'
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200'
     }
   }
 
   const getReviewStatusColor = (status: GitHubPR['reviewStatus'], pr: GitHubPR & PullRequestMetadata) => {
+    // For draft PRs, show draft color
+    if (pr.isDraft) {
+      return 'bg-gray-100 text-gray-800 border-gray-200'
+    }
+    
     switch (status) {
       case 'approved':
         return 'bg-green-100 text-green-800 border-green-200'
@@ -60,6 +70,11 @@ export function PullRequestCard({ pr, onUpdateMetadata, taskStatus }: PullReques
   }
 
   const getReviewStatusText = (status: GitHubPR['reviewStatus'], pr: GitHubPR & PullRequestMetadata) => {
+    // For draft PRs, show draft status instead of review status
+    if (pr.isDraft) {
+      return 'Draft'
+    }
+    
     switch (status) {
       case 'approved':
         return 'Approved'
@@ -82,6 +97,11 @@ export function PullRequestCard({ pr, onUpdateMetadata, taskStatus }: PullReques
   }
 
   const getReviewStatusIcon = (status: GitHubPR['reviewStatus'], pr: GitHubPR & PullRequestMetadata) => {
+    // For draft PRs, show draft icon
+    if (pr.isDraft) {
+      return <FileText className="h-3 w-3" />
+    }
+    
     switch (status) {
       case 'approved':
         return <CheckCircle className="h-3 w-3" />
@@ -127,7 +147,7 @@ export function PullRequestCard({ pr, onUpdateMetadata, taskStatus }: PullReques
           identifierTooltip="Copy PR number"
           urlTooltip="Copy PR URL"
         />
-        <Badge variant="outline" className={`text-xs ${getStatusColor(pr.status)}`}>
+        <Badge variant="outline" className={`text-xs ${getStatusColor(pr.status, pr.isDraft)}`}>
           {pr.status}
         </Badge>
         <GitPullRequest className="h-3 w-3 text-gray-500" />
@@ -158,7 +178,7 @@ export function PullRequestCard({ pr, onUpdateMetadata, taskStatus }: PullReques
                 identifierTooltip="Copy PR number"
                 urlTooltip="Copy PR URL"
               />
-              <Badge className={getStatusColor(pr.status)}>
+              <Badge className={getStatusColor(pr.status, pr.isDraft)}>
                 {pr.status === 'open' && pr.isDraft ? 'Draft' : pr.status}
               </Badge>
             </div>
@@ -208,8 +228,8 @@ export function PullRequestCard({ pr, onUpdateMetadata, taskStatus }: PullReques
             />
           )}
 
-          {/* Review Status and Reviewers Information - Only show for open PRs */}
-          {pr.status === 'open' && (
+          {/* Review Status and Reviewers Information - Only show for open, non-draft PRs */}
+          {pr.status === 'open' && !pr.isDraft && (
             <div className="flex items-center justify-between gap-4">
               {/* Status Badge */}
               <Badge className={getReviewStatusColor(pr.reviewStatus, pr)}>
