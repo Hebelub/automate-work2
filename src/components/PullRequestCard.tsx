@@ -39,12 +39,17 @@ export function PullRequestCard({ pr, onUpdateMetadata, taskStatus }: PullReques
     }
   }
 
-  const getReviewStatusColor = (status: GitHubPR['reviewStatus']) => {
+  const getReviewStatusColor = (status: GitHubPR['reviewStatus'], pr: GitHubPR & PullRequestMetadata) => {
     switch (status) {
       case 'approved':
         return 'bg-green-100 text-green-800 border-green-200'
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200'
+        // Different colors based on whether reviews are required
+        if (pr.requestedReviewers.length > 0) {
+          return 'bg-yellow-100 text-yellow-800 border-yellow-200'
+        } else {
+          return 'bg-blue-100 text-blue-800 border-blue-200'
+        }
       case 'changes_requested':
         return 'bg-red-100 text-red-800 border-red-200'
       case 'no_reviews':
@@ -54,12 +59,19 @@ export function PullRequestCard({ pr, onUpdateMetadata, taskStatus }: PullReques
     }
   }
 
-  const getReviewStatusText = (status: GitHubPR['reviewStatus']) => {
+  const getReviewStatusText = (status: GitHubPR['reviewStatus'], pr: GitHubPR & PullRequestMetadata) => {
     switch (status) {
       case 'approved':
         return 'Approved'
       case 'pending':
-        return 'Pending Review'
+        // If there are requested reviewers but no approvals yet, show "Needs n more reviews"
+        // If there are no requested reviewers, show "No Reviews Required"
+        if (pr.requestedReviewers.length > 0) {
+          const neededReviews = (pr.requiredReviewers || 1) - pr.approvedReviewers.length
+          return `Needs ${neededReviews} more review${neededReviews !== 1 ? 's' : ''}`
+        } else {
+          return 'No Reviews Required'
+        }
       case 'changes_requested':
         return 'Changes Requested'
       case 'no_reviews':
@@ -69,12 +81,17 @@ export function PullRequestCard({ pr, onUpdateMetadata, taskStatus }: PullReques
     }
   }
 
-  const getReviewStatusIcon = (status: GitHubPR['reviewStatus']) => {
+  const getReviewStatusIcon = (status: GitHubPR['reviewStatus'], pr: GitHubPR & PullRequestMetadata) => {
     switch (status) {
       case 'approved':
         return <CheckCircle className="h-3 w-3" />
       case 'pending':
-        return <Clock className="h-3 w-3" />
+        // Show different icons based on whether reviews are required
+        if (pr.requestedReviewers.length > 0) {
+          return <Clock className="h-3 w-3" />
+        } else {
+          return <CheckCircle className="h-3 w-3" />
+        }
       case 'changes_requested':
         return <AlertCircle className="h-3 w-3" />
       case 'no_reviews':
@@ -191,47 +208,70 @@ export function PullRequestCard({ pr, onUpdateMetadata, taskStatus }: PullReques
             />
           )}
 
-          {/* Review Status - Only show for open PRs */}
+          {/* Review Status and Reviewers Information - Only show for open PRs */}
           {pr.status === 'open' && (
-            <div className="flex items-center gap-2">
-              <Badge className={getReviewStatusColor(pr.reviewStatus)}>
+            <div className="flex items-center justify-between gap-4">
+              {/* Status Badge */}
+              <Badge className={getReviewStatusColor(pr.reviewStatus, pr)}>
                 <div className="flex items-center gap-1">
-                  {getReviewStatusIcon(pr.reviewStatus)}
-                  {getReviewStatusText(pr.reviewStatus)}
+                  {getReviewStatusIcon(pr.reviewStatus, pr)}
+                  {getReviewStatusText(pr.reviewStatus, pr)}
                 </div>
               </Badge>
-            </div>
-          )}
 
-          {/* Reviewers Information - Only show for open PRs */}
-          {pr.status === 'open' && pr.requestedReviewers.length > 0 && (
-            <div className="text-xs text-gray-600">
-              <div className="flex items-center gap-1 mb-1">
-                <Clock className="h-3 w-3" />
-                <span className="font-medium">Waiting for:</span>
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {pr.requestedReviewers.map((reviewer, index) => (
-                  <Badge key={index} variant="outline" className="text-xs">
-                    {reviewer}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
+              {/* Reviewers Information */}
+              <div className="flex items-center gap-4 text-xs text-gray-600">
+                {/* Waiting for section */}
+                {pr.requestedReviewers.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      <span className="font-medium">Waiting for:</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {pr.requestedReviewers.map((reviewer, index) => (
+                        <Badge key={index} variant="outline" className="text-xs">
+                          {reviewer}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
-          {pr.status !== 'merged' && pr.approvedReviewers.length > 0 && (
-            <div className="text-xs text-gray-600">
-              <div className="flex items-center gap-1 mb-1">
-                <CheckCircle className="h-3 w-3" />
-                <span className="font-medium">Approved by:</span>
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {pr.approvedReviewers.map((reviewer, index) => (
-                  <Badge key={index} variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
-                    {reviewer}
-                  </Badge>
-                ))}
+                {/* Rejected by section - only show if changes requested */}
+                {pr.reviewStatus === 'changes_requested' && (
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3 text-red-600" />
+                      <span className="font-medium text-red-600">Changes requested:</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {/* For now, show all requested reviewers as they requested changes */}
+                      {pr.requestedReviewers.map((reviewer, index) => (
+                        <Badge key={index} variant="outline" className="text-xs bg-red-50 text-red-700 border-red-200">
+                          {reviewer}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Approved by section */}
+                {pr.approvedReviewers.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
+                      <CheckCircle className="h-3 w-3 text-green-600" />
+                      <span className="font-medium text-green-600">Approved by:</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {pr.approvedReviewers.map((reviewer, index) => (
+                        <Badge key={index} variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                          {reviewer}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

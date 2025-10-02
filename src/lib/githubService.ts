@@ -152,6 +152,9 @@ async function fetchPRsFromRepo(repoFullName: string): Promise<GitHubPR[]> {
       let reviewStatus: 'pending' | 'approved' | 'changes_requested' | 'no_reviews' = 'no_reviews'
       let requestedReviewers: string[] = []
       let approvedReviewers: string[] = []
+      let requiredReviewers: number = 0
+      let hasApprovals = false
+      let hasChangesRequested = false
       
       if (prStatus === 'open') {
         try {
@@ -176,29 +179,50 @@ async function fetchPRsFromRepo(repoFullName: string): Promise<GitHubPR[]> {
             
             // Process review status
             if (reviews.length > 0) {
+              // Get the latest review from each reviewer (reviews are returned in chronological order)
               const latestReviews = new Map()
               reviews.forEach((review: any) => {
-                latestReviews.set(review.user.login, review.state)
+                // Only consider non-comment reviews for status determination
+                if (review.state !== 'COMMENTED') {
+                  latestReviews.set(review.user.login, review.state)
+                }
               })
               
-              const hasApprovals = Array.from(latestReviews.values()).some((state: string) => state === 'approved')
-              const hasChangesRequested = Array.from(latestReviews.values()).some((state: string) => state === 'changes_requested')
+              hasApprovals = Array.from(latestReviews.values()).some((state: string) => state === 'APPROVED')
+              hasChangesRequested = Array.from(latestReviews.values()).some((state: string) => state === 'CHANGES_REQUESTED')
               
-              if (hasChangesRequested) {
-                reviewStatus = 'changes_requested'
-              } else if (hasApprovals) {
-                reviewStatus = 'approved'
-              } else {
-                reviewStatus = 'pending'
-              }
-              
-              // Get approved reviewers
+              // Get approved reviewers first
               approvedReviewers = Array.from(latestReviews.entries())
-                .filter(([_, state]) => state === 'approved')
+                .filter(([_, state]) => state === 'APPROVED')
                 .map(([reviewer, _]) => reviewer)
             } else if (requestedReviewers.length > 0) {
               reviewStatus = 'pending'
             }
+          }
+
+          // Simple logic: react-layout-components requires 2 reviews, others require 1
+          if (repoFullName === 'tfso/react-layout-components') {
+            requiredReviewers = 2
+          } else {
+            requiredReviewers = 1
+          }
+          console.log(`Required reviewers for ${repoFullName}: ${requiredReviewers}`)
+            
+          // Now determine the correct review status based on all information
+          if (hasChangesRequested) {
+            reviewStatus = 'changes_requested'
+          } else if (hasApprovals) {
+            // Check if we have enough approvals based on required reviewers count
+            if (requiredReviewers > 0 && approvedReviewers.length >= requiredReviewers) {
+              reviewStatus = 'approved'
+            } else if (requiredReviewers > 0) {
+              reviewStatus = 'pending'
+            } else {
+              // If no required reviewers count, any approval means approved
+              reviewStatus = 'approved'
+            }
+          } else {
+            reviewStatus = 'pending'
           }
         } catch (error) {
           console.error(`Error fetching reviews for PR #${pr.number}:`, error)
@@ -221,6 +245,7 @@ async function fetchPRsFromRepo(repoFullName: string): Promise<GitHubPR[]> {
         reviewStatus,
         requestedReviewers,
         approvedReviewers,
+        requiredReviewers,
       }
     }))
     
