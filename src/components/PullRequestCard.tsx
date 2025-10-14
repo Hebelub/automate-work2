@@ -238,15 +238,14 @@ export function PullRequestCard({ pr, onUpdateMetadata, taskStatus }: PullReques
                 )}
 
                 {/* Rejected by section - only show if changes requested */}
-                {pr.reviewStatus === 'changes_requested' && (
+                {pr.reviewStatus === 'changes_requested' && pr.changesRequestedReviewers.length > 0 && (
                   <div className="flex items-center gap-2">
                     <div className="flex items-center gap-1">
                       <AlertCircle className="h-3 w-3 text-red-600" />
                       <span className="font-medium">Changes requested:</span>
                     </div>
                     <div className="flex flex-wrap gap-1">
-                      {/* For now, show all requested reviewers as they requested changes */}
-                      {pr.requestedReviewers.map((reviewer, index) => (
+                      {pr.changesRequestedReviewers.map((reviewer, index) => (
                         <Badge key={index} variant="outline" className="text-xs bg-red-50 text-red-700 border-red-200">
                           {reviewer}
                         </Badge>

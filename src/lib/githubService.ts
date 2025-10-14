@@ -152,6 +152,7 @@ async function fetchPRsFromRepo(repoFullName: string): Promise<GitHubPR[]> {
       let reviewStatus: 'pending' | 'approved' | 'changes_requested' | 'no_reviews' = 'no_reviews'
       let requestedReviewers: string[] = []
       let approvedReviewers: string[] = []
+      let changesRequestedReviewers: string[] = []
       let requiredReviewers: number = 0
       let hasApprovals = false
       let hasChangesRequested = false
@@ -191,9 +192,14 @@ async function fetchPRsFromRepo(repoFullName: string): Promise<GitHubPR[]> {
               hasApprovals = Array.from(latestReviews.values()).some((state: string) => state === 'APPROVED')
               hasChangesRequested = Array.from(latestReviews.values()).some((state: string) => state === 'CHANGES_REQUESTED')
               
-              // Get approved reviewers first
+              // Get approved reviewers
               approvedReviewers = Array.from(latestReviews.entries())
                 .filter(([_, state]) => state === 'APPROVED')
+                .map(([reviewer, _]) => reviewer)
+              
+              // Get reviewers who requested changes
+              changesRequestedReviewers = Array.from(latestReviews.entries())
+                .filter(([_, state]) => state === 'CHANGES_REQUESTED')
                 .map(([reviewer, _]) => reviewer)
             } else if (requestedReviewers.length > 0) {
               reviewStatus = 'pending'
@@ -245,6 +251,7 @@ async function fetchPRsFromRepo(repoFullName: string): Promise<GitHubPR[]> {
         reviewStatus,
         requestedReviewers,
         approvedReviewers,
+        changesRequestedReviewers,
         requiredReviewers,
       }
     }))

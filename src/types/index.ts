@@ -67,6 +67,7 @@ export interface GitHubPR extends BaseGitHubPR {
   reviewStatus: 'pending' | 'approved' | 'changes_requested' | 'no_reviews'
   requestedReviewers: string[]
   approvedReviewers: string[]
+  changesRequestedReviewers: string[] // Reviewers who requested changes
   requiredReviewers?: number // Number of required reviewers (from branch protection rules)
 }
 
