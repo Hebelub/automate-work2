@@ -93,9 +93,9 @@ export function PullRequestCard({ pr, onUpdateMetadata, taskStatus }: PullReques
       case 'approved':
         return 'Approved'
       case 'pending':
-        // If there are requested reviewers but no approvals yet, show "Needs n more reviews"
-        // If there are no requested reviewers, show "No Reviews Required"
-        if (pr.requestedReviewers.length > 0) {
+        // If reviews are required, show "Needs n more reviews"
+        // If no reviews are required, show "No Reviews Required"
+        if ((pr.requiredReviewers || 0) > 0) {
           const neededReviews = (pr.requiredReviewers || 1) - pr.approvedReviewers.length
           return `Needs ${neededReviews} more review${neededReviews !== 1 ? 's' : ''}`
         } else {
