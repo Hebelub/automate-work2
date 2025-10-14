@@ -6,7 +6,15 @@ import { getJiraTaskMetadata, getChildTasks, getPRMetadata } from "./jiraMetadat
 // Cache for PRs to avoid refetching
 let cachedPRs: GitHubPR[] = []
 let cachedPRsTimestamp = 0
-const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
+const CACHE_DURATION = 1 * 60 * 1000 // 1 minute (reduced from 5 minutes)
+
+// Function to clear all caches
+export function clearAllCaches(): void {
+  cachedPRs = []
+  cachedPRsTimestamp = 0
+  clearActiveReposCache()
+  console.log('All caches cleared')
+}
 
 // Helper function to apply PR metadata to PRs
 function applyPRMetadata(prs: GitHubPR[]): (GitHubPR & any)[] {
@@ -69,16 +77,17 @@ export async function getPRsNeedingReview(): Promise<ReviewGitHubPR[]> {
 }
 
 // Fast function to load ONLY JIRA tasks + PRs (no Git operations)
-export async function getTasksWithPRs(selectedRepo?: string): Promise<TaskWithPRs[]> {
+export async function getTasksWithPRs(selectedRepo?: string, forceRefresh?: boolean): Promise<TaskWithPRs[]> {
   try {
     console.log('Phase 1: Loading JIRA tasks + PRs (fast)...')
     
     // Check GitHub rate limit first
     const rateLimitBefore = await checkGitHubRateLimit()
     
-    // Check if we need to fetch PRs (cache expired or different repo selected)
+    // Check if we need to fetch PRs (cache expired, different repo selected, or force refresh)
     const now = Date.now()
-    const shouldFetchPRs = !cachedPRs.length || 
+    const shouldFetchPRs = forceRefresh || 
+                    !cachedPRs.length || 
                     (now - cachedPRsTimestamp > CACHE_DURATION) ||
                     (selectedRepo && selectedRepo !== 'all' && !cachedPRs.some(pr => pr.repository?.toLowerCase() === selectedRepo.toLowerCase()))
     
@@ -87,7 +96,7 @@ export async function getTasksWithPRs(selectedRepo?: string): Promise<TaskWithPR
     // Only fetch fresh PR data if we're not rate limited
     if (shouldFetchPRs && !rateLimitBefore.isRateLimited) {
       console.log('Fetching fresh PR data...')
-      allPRs = await fetchPullRequests(selectedRepo)
+      allPRs = await fetchPullRequests(selectedRepo, forceRefresh)
       cachedPRs = allPRs
       cachedPRsTimestamp = now
     } else if (rateLimitBefore.isRateLimited) {

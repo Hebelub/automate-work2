@@ -557,7 +557,12 @@ export function JiraTaskCard({ task, onUpdateMetadata, showHiddenItems = false, 
                 {task.pullRequestsExpanded && (
                   <div className="space-y-2">
                     {visiblePRs.map((pr) => (
-                      <PullRequestCard key={pr.id} pr={pr} onUpdateMetadata={updatePRMetadata} taskStatus={task.status} />
+                      <PullRequestCard 
+                        key={pr.id} 
+                        pr={pr} 
+                        onUpdateMetadata={updatePRMetadata} 
+                        taskStatus={task.status}
+                      />
                     ))}
                   </div>
                 )}

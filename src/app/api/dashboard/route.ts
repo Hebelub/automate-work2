@@ -7,6 +7,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const repo = searchParams.get('repo') || undefined
     const refresh = searchParams.get('refresh')
+    const force = searchParams.get('force')
     const action = searchParams.get('action')
     
     // Clear cache if refresh parameter is present
@@ -14,8 +15,10 @@ export async function GET(request: NextRequest) {
       clearPRCache()
     }
     
-    
-    const tasks = await getTasksWithPRs(repo)
+    // Force fresh data fetch if force=true
+    const tasks = force === 'true' 
+      ? await getTasksWithPRs(repo, true) // Pass force parameter
+      : await getTasksWithPRs(repo)
     
     // Get the current rate limit status after all API calls
     const rateLimit = await checkGitHubRateLimit()

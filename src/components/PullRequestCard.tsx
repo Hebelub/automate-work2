@@ -1,10 +1,8 @@
-import { GitHubPR, LocalBranch } from "@/types"
+import { GitHubPR } from "@/types"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ExternalLink, GitBranch, User, GitPullRequest, CheckCircle, Clock, AlertCircle, Users, Copy, Check, Eye, EyeOff, Link, FileText } from "lucide-react"
-import { CopyButton } from "@/components/ui/copy-button"
+import { GitPullRequest, CheckCircle, Clock, AlertCircle, Users, Copy, Check, Eye, EyeOff, Link, FileText } from "lucide-react"
 import { DualCopyButton } from "@/components/ui/dual-copy-button"
-import { useState } from "react"
 import { PullRequestMetadata } from "@/lib/jiraMetadataService"
 import { LocalBranches } from "@/components/LocalBranches"
 import { RepositoryBranchInfo } from "@/components/RepositoryBranchInfo"
@@ -59,31 +57,6 @@ export function PullRequestCard({ pr, onUpdateMetadata, taskStatus }: PullReques
     }
   }
 
-  const getReviewStatusColor = (status: GitHubPR['reviewStatus'], pr: GitHubPR & PullRequestMetadata) => {
-    // For draft PRs, show draft color
-    if (pr.isDraft) {
-      return 'bg-gray-100 text-gray-800 border-gray-200'
-    }
-    
-    switch (status) {
-      case 'approved':
-        return 'bg-green-100 text-green-800 border-green-200'
-      case 'pending':
-        // Different colors based on whether reviews are required
-        if (pr.requestedReviewers.length > 0) {
-          return 'bg-yellow-100 text-yellow-800 border-yellow-200'
-        } else {
-          return 'bg-blue-100 text-blue-800 border-blue-200'
-        }
-      case 'changes_requested':
-        return 'bg-red-100 text-red-800 border-red-200'
-      case 'no_reviews':
-        return 'bg-gray-100 text-gray-600 border-gray-200'
-      default:
-        return 'bg-gray-100 text-gray-600 border-gray-200'
-    }
-  }
-
   const getMainStatusText = (pr: GitHubPR & PullRequestMetadata) => {
     // Priority: draft ?? approverStatus ?? open
     if (pr.isDraft) {
@@ -134,31 +107,6 @@ export function PullRequestCard({ pr, onUpdateMetadata, taskStatus }: PullReques
         return 'No Reviews'
       default:
         return 'Unknown'
-    }
-  }
-
-  const getReviewStatusIcon = (status: GitHubPR['reviewStatus'], pr: GitHubPR & PullRequestMetadata) => {
-    // For draft PRs, show draft icon
-    if (pr.isDraft) {
-      return <FileText className="h-3 w-3" />
-    }
-    
-    switch (status) {
-      case 'approved':
-        return <CheckCircle className="h-3 w-3" />
-      case 'pending':
-        // Show different icons based on whether reviews are required
-        if (pr.requestedReviewers.length > 0) {
-          return <Clock className="h-3 w-3" />
-        } else {
-          return <CheckCircle className="h-3 w-3" />
-        }
-      case 'changes_requested':
-        return <AlertCircle className="h-3 w-3" />
-      case 'no_reviews':
-        return <Users className="h-3 w-3" />
-      default:
-        return <Users className="h-3 w-3" />
     }
   }
 

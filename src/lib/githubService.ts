@@ -70,9 +70,9 @@ export async function fetchUserRepositories(): Promise<GitHubRepo[]> {
 // Cache for repositories that have linked PRs
 let cachedActiveRepos: string[] = []
 let cachedActiveReposTimestamp = 0
-const ACTIVE_REPOS_CACHE_DURATION = 30 * 60 * 1000 // 30 minutes
+const ACTIVE_REPOS_CACHE_DURATION = 5 * 60 * 1000 // 5 minutes (reduced from 30   minutes)
 
-export async function fetchPullRequests(repoFullName?: string): Promise<GitHubPR[]> {
+export async function fetchPullRequests(repoFullName?: string, forceRefresh?: boolean): Promise<GitHubPR[]> {
   if (!GITHUB_TOKEN) {
     console.warn('GitHub credentials not configured, returning empty array')
     return []
@@ -89,7 +89,7 @@ export async function fetchPullRequests(repoFullName?: string): Promise<GitHubPR
       
       // Check if we need to refresh the active repos cache
       const now = Date.now()
-      if (!cachedActiveRepos.length || (now - cachedActiveReposTimestamp > ACTIVE_REPOS_CACHE_DURATION)) {
+      if (forceRefresh || !cachedActiveRepos.length || (now - cachedActiveReposTimestamp > ACTIVE_REPOS_CACHE_DURATION)) {
         console.log('Refreshing active repositories cache...')
         await refreshActiveReposCache()
       }

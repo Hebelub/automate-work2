@@ -224,8 +224,18 @@ export function Dashboard() {
       setRefreshing(true);
       setError(null);
 
-      // Clear cache by adding a timestamp parameter
-      const response = await fetch(`/api/dashboard?refresh=${Date.now()}`);
+      // Clear all caches first
+      await fetch('/api/clear-cache', { method: 'POST' });
+
+      // Force fresh data fetch with timestamp and no-cache headers
+      const response = await fetch(`/api/dashboard?refresh=${Date.now()}&force=true`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
